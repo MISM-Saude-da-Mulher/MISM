@@ -59,6 +59,12 @@
 - Download real testado com `fonte_parquet.garantir_dados()`: 38 arquivos idênticos por MD5, banco e CNES montam. Para a hospedagem criar um token de LEITURA (não usar o de escrita).
 - Pendente: GitHub (repositório `vladimirsejas/MISM`, vazio e aparentemente público: decidir tornar privado antes de subir CLAUDE.md/docs) e Streamlit Cloud.
 
+## GitHub (27/10/2026) — código ENVIADO
+- Repositório da organização (privado, 404 sem login): https://github.com/MISM-Saude-da-Mulher/MISM — commit `4c22bf4` sobre o `Initial commit` (README dos colegas mantido). 168 arquivos; MISM2 entrou como pasta comum (sem o `.git` dele).
+- Cópia de trabalho do repositório: `C:\MISM_site_repo` (clone). **Mudanças futuras feitas em `C:\MISM FINAL` precisam ser copiadas para lá e enviadas** (ainda não há rotina automática).
+- O repositório `vladimirsejas/MISM2` (privado, pessoal) continua separado: decidir se transfere para a organização ou se o site passa a ser a fonte única.
+- Falta: Streamlit Community Cloud (app + Secrets `MISM_DATASET` e token de LEITURA do Hugging Face).
+
 ## Próximo
 - Decisões pendentes do autor: (1) aceitar essa arquitetura (código no GitHub + dados em dataset privado do HF); (2) publicar ou não `cnes/tbCargaHorariaSus` (código de profissional; 110,7 MB); (3) `tbDadosProfissionalSus` fica de fora.
 - Depois: montar a pasta de deploy (só cópia dos ~208 MB, sem alterar a origem) e o passo de download.
