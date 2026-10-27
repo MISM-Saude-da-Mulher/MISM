@@ -1,0 +1,160 @@
+COMPLETUDE DOS MESES -- arquivos estaduais brutos (X presente, - faltando, p parcial)
+
+======================================================================
+COLO_UTERO  (cancer_colo_utero_mulheres_sp_2013_2025.csv)
+ano   jan fev mar abr mai jun jul ago set out nov dez  | meses
+2013    X   -   -   X   X   X   X   X   X   X   X   X  | 10/12
+2014    X   X   -   X   X   X   X   -   X   X   X   X  | 10/12
+2015    X   X   -   X   X   -   -   X   -   X   X   X  |  8/12
+2016    -   -   X   X   X   X   X   X   X   X   -   X  |  9/12
+2017    -   X   X   X   X   X   X   X   X   X   X   X  | 11/12
+2018    -   X   X   -   -   X   X   X   X   -   -   -  |  6/12
+2019    X   X   -   X   X   X   -   -   X   -   X   -  |  7/12
+2020    X   -   X   X   -   X   X   X   -   X   -   X  |  8/12
+2021    -   X   X   X   X   X   X   X   X   X   X   X  | 11/12
+2022    X   X   X   X   X   X   -   -   X   X   X   X  | 10/12
+2023    X   X   X   -   X   X   X   X   X   X   X   X  | 11/12
+2024    X   -   X   X   X   -   X   -   X   X   X   -  |  8/12
+2025    X   X   X   X   X   X   X   X   X   X   X   X  | 12/12
+
+======================================================================
+COLORRETAL  (cancer_colorretal_mulheres_sp_2013_2025.csv)
+ano   jan fev mar abr mai jun jul ago set out nov dez  | meses
+2013    X   -   -   X   X   X   X   X   X   X   X   X  | 10/12
+2014    X   X   -   X   X   X   X   -   X   X   X   X  | 10/12
+2015    X   X   -   X   X   -   -   X   -   X   X   X  |  8/12
+2016    -   -   X   X   X   X   X   X   X   X   -   X  |  9/12
+2017    -   X   X   X   X   X   X   X   X   X   X   X  | 11/12
+2018    -   X   X   -   -   X   X   X   X   -   -   -  |  6/12
+2019    X   X   -   X   X   X   -   -   X   -   X   -  |  7/12
+2020    X   -   X   X   -   X   X   X   -   X   -   X  |  8/12
+2021    -   X   X   X   X   X   X   X   X   X   X   X  | 11/12
+2022    X   X   X   X   X   X   -   -   X   X   X   X  | 10/12
+2023    X   X   X   -   X   X   X   X   X   X   X   X  | 11/12
+2024    X   -   X   X   X   -   X   -   X   X   X   -  |  8/12
+2025    X   X   X   X   X   X   X   X   X   X   X   X  | 12/12
+
+======================================================================
+MAMA  (cancer_mama_mulheres_sp_2013_2025.csv)
+ano   jan fev mar abr mai jun jul ago set out nov dez  | meses
+2013    X   -   -   X   X   X   X   X   X   X   X   X  | 10/12
+2014    X   X   -   X   X   X   X   -   X   X   X   X  | 10/12
+2015    X   X   -   X   X   -   -   X   -   X   X   X  |  8/12
+2016    -   -   X   X   X   X   X   X   X   X   -   X  |  9/12
+2017    -   X   X   X   X   X   X   X   X   X   X   X  | 11/12
+2018    -   X   X   -   -   X   X   X   X   -   -   -  |  6/12
+2019    X   X   -   X   X   X   -   -   X   -   X   -  |  7/12
+2020    X   -   X   X   -   X   X   X   -   X   -   X  |  8/12
+2021    -   X   X   X   X   X   X   X   X   X   X   X  | 11/12
+2022    X   X   X   X   X   X   -   -   X   X   X   X  | 10/12
+2023    X   X   X   -   X   X   X   X   X   X   X   X  | 11/12
+2024    X   -   X   X   X   -   X   -   X   X   X   -  |  8/12
+2025    X   X   X   X   X   X   X   X   X   X   X   X  | 12/12
+
+======================================================================
+OVARIO  (cancer_ovario_mulheres_sp_2013_2025.csv)
+ano   jan fev mar abr mai jun jul ago set out nov dez  | meses
+2013    X   -   -   X   X   X   X   X   X   X   X   X  | 10/12
+2014    X   X   -   X   X   X   X   -   X   X   X   X  | 10/12
+2015    X   X   -   X   X   -   -   X   -   X   X   X  |  8/12
+2016    -   -   X   X   X   X   X   X   X   X   -   X  |  9/12
+2017    -   X   X   X   X   X   X   X   X   X   X   X  | 11/12
+2018    -   X   X   -   -   X   X   X   X   -   -   -  |  6/12
+2019    X   X   -   X   X   X   -   -   X   -   X   -  |  7/12
+2020    X   -   X   X   -   X   X   X   -   X   -   X  |  8/12
+2021    -   X   X   X   X   X   X   X   X   X   X   X  | 11/12
+2022    X   X   X   X   X   X   -   -   X   X   X   X  | 10/12
+2023    X   X   X   -   X   X   X   X   X   X   X   X  | 11/12
+2024    X   -   X   X   X   -   X   -   X   X   X   -  |  8/12
+2025    X   X   X   X   X   X   X   X   X   X   X   X  | 12/12
+
+======================================================================
+PELE_NAO_MELANOMA  (cancer_pele_nao_melanoma_mulheres_sp_2013_2025.csv)
+ano   jan fev mar abr mai jun jul ago set out nov dez  | meses
+2013    X   -   -   X   X   X   X   X   X   X   X   X  | 10/12
+2014    X   X   -   X   X   X   X   -   X   X   X   X  | 10/12
+2015    X   X   -   X   X   -   -   X   -   X   X   X  |  8/12
+2016    -   -   X   X   X   X   X   X   X   X   -   X  |  9/12
+2017    -   X   X   X   X   X   X   X   X   X   X   X  | 11/12
+2018    -   X   X   -   -   X   X   X   X   -   -   -  |  6/12
+2019    X   X   -   X   X   X   -   -   X   -   X   -  |  7/12
+2020    X   -   X   X   -   X   X   X   -   X   -   X  |  8/12
+2021    -   X   X   X   X   X   X   X   X   X   X   X  | 11/12
+2022    X   X   X   X   X   X   -   -   X   X   X   X  | 10/12
+2023    X   X   X   -   X   X   X   X   X   X   X   X  | 11/12
+2024    X   -   X   X   X   -   X   -   X   X   X   -  |  8/12
+2025    X   X   X   X   X   X   X   X   X   X   X   X  | 12/12
+
+======================================================================
+PULMAO  (cancer_pulmao_mulheres_sp_2013_2025.csv)
+ano   jan fev mar abr mai jun jul ago set out nov dez  | meses
+2013    X   -   -   X   X   X   X   X   X   X   X   X  | 10/12
+2014    X   X   -   X   X   X   X   -   X   X   X   X  | 10/12
+2015    X   X   -   X   X   -   -   X   -   X   X   X  |  8/12
+2016    -   -   X   X   X   X   X   X   X   X   -   X  |  9/12
+2017    -   X   X   X   X   X   X   X   X   X   X   X  | 11/12
+2018    -   X   X   -   -   X   X   X   X   -   -   -  |  6/12
+2019    X   X   -   X   X   X   -   -   X   -   X   -  |  7/12
+2020    X   -   X   X   -   X   X   X   -   X   -   X  |  8/12
+2021    -   X   X   X   X   X   X   X   X   X   X   X  | 11/12
+2022    X   X   X   X   X   X   -   -   X   X   X   X  | 10/12
+2023    X   X   X   -   X   X   X   X   X   X   X   X  | 11/12
+2024    X   -   X   X   X   -   X   -   X   X   X   -  |  8/12
+2025    X   X   X   X   X   X   X   X   X   X   X   X  | 12/12
+
+======================================================================
+TIREOIDE  (cancer_tireoide_mulheres_sp_2013_2025.csv)
+ano   jan fev mar abr mai jun jul ago set out nov dez  | meses
+2013    X   -   -   X   X   X   X   X   X   X   X   X  | 10/12
+2014    X   X   -   X   X   X   X   -   X   X   X   X  | 10/12
+2015    X   X   -   X   X   -   -   X   -   X   X   X  |  8/12
+2016    -   -   X   X   X   X   X   X   X   X   -   X  |  9/12
+2017    -   X   X   X   X   X   X   X   X   X   X   X  | 11/12
+2018    -   X   X   -   -   X   X   X   X   -   -   -  |  6/12
+2019    X   X   -   X   X   X   -   -   X   -   X   -  |  7/12
+2020    X   -   X   X   -   X   X   X   -   X   -   X  |  8/12
+2021    -   X   X   X   X   X   X   X   X   X   X   X  | 11/12
+2022    X   X   X   X   X   X   -   -   X   X   X   X  | 10/12
+2023    X   X   X   -   X   X   X   X   X   X   X   X  | 11/12
+2024    X   -   X   X   X   -   X   -   X   X   X   -  |  8/12
+2025    X   X   X   X   X   X   X   X   X   X   X   X  | 12/12
+
+======================================================================
+O QUE BAIXAR DE NOVO NO DATASUS (competência ano/mês):
+  2013/02 (fev): faltando -- todos os cânceres
+  2013/03 (mar): faltando -- todos os cânceres
+  2014/03 (mar): faltando -- todos os cânceres
+  2014/08 (ago): faltando -- todos os cânceres
+  2015/03 (mar): faltando -- todos os cânceres
+  2015/06 (jun): faltando -- todos os cânceres
+  2015/07 (jul): faltando -- todos os cânceres
+  2015/09 (set): faltando -- todos os cânceres
+  2016/01 (jan): faltando -- todos os cânceres
+  2016/02 (fev): faltando -- todos os cânceres
+  2016/11 (nov): faltando -- todos os cânceres
+  2017/01 (jan): faltando -- todos os cânceres
+  2018/01 (jan): faltando -- todos os cânceres
+  2018/04 (abr): faltando -- todos os cânceres
+  2018/05 (mai): faltando -- todos os cânceres
+  2018/10 (out): faltando -- todos os cânceres
+  2018/11 (nov): faltando -- todos os cânceres
+  2018/12 (dez): faltando -- todos os cânceres
+  2019/03 (mar): faltando -- todos os cânceres
+  2019/07 (jul): faltando -- todos os cânceres
+  2019/08 (ago): faltando -- todos os cânceres
+  2019/10 (out): faltando -- todos os cânceres
+  2019/12 (dez): faltando -- todos os cânceres
+  2020/02 (fev): faltando -- todos os cânceres
+  2020/05 (mai): faltando -- todos os cânceres
+  2020/09 (set): faltando -- todos os cânceres
+  2020/11 (nov): faltando -- todos os cânceres
+  2021/01 (jan): faltando -- todos os cânceres
+  2022/07 (jul): faltando -- todos os cânceres
+  2022/08 (ago): faltando -- todos os cânceres
+  2023/04 (abr): faltando -- todos os cânceres
+  2024/02 (fev): faltando -- todos os cânceres
+  2024/06 (jun): faltando -- todos os cânceres
+  2024/08 (ago): faltando -- todos os cânceres
+  2024/12 (dez): faltando -- todos os cânceres
+
+Anos com mês faltando ou parcial: 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024. O total anual desses anos sai menor que o real; tendência, anos fora do padrão e projeção ficam distorcidos até baixar.

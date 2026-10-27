@@ -1,0 +1,8 @@
+streamlit>=1.46
+pandas
+pyarrow
+plotly
+pydeck
+python-dotenv
+google-genai
+huggingface_hub

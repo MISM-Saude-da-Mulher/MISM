@@ -1,0 +1,530 @@
+import os
+import sqlite3
+import tempfile
+
+import pandas as pd
+
+from inteligencia import (
+    anos_fora_do_padrao,
+    anos_incompletos,
+    confiabilidade,
+    ficha_cancer,
+    ano_atipico_no_estado,
+    carregar_serie,
+    completar_anos,
+    escolher_uma_fonte,
+    formatar_numero,
+    leitura_evolucao,
+    leitura_ponta_projecao,
+    nome_doenca,
+    ponta_fora_da_tendencia,
+    projetar,
+    radar_futuro,
+    resumo_doencas,
+    ritmo_estadual_na_escala,
+    serie_doenca,
+    tendencia_no_periodo,
+    testar_projecao,
+)
+
+# =====================================
+# TESTE DA INTELIGÊNCIA CENTRAL
+#
+# Séries sintéticas com números fáceis de conferir de cabeça, um
+# banco sqlite temporário (para a regra de "uma fonte por cidade")
+# e a base pública real analises/base_preditiva_2013_2025.csv.
+# Não precisa do banco do Windows.
+# =====================================
+
+DIRETORIO_ATUAL = os.path.dirname(os.path.abspath(__file__))
+CSV_REAL = os.path.join(DIRETORIO_ATUAL, "..", "analises", "base_preditiva_2013_2025.csv")
+
+falhas = []
+
+
+def checar(nome, condicao):
+    print(("OK   " if condicao else "FALHOU ") + nome)
+    if not condicao:
+        falhas.append(nome)
+
+
+def serie(valores_municipio, valores_estado=None, cancer="MAMA", ano_inicial=2013):
+    linhas = []
+    for i, v in enumerate(valores_municipio):
+        linhas.append((cancer, "MUNICIPIO", ano_inicial + i, v, 0, 100.0 * v, 3 * v))
+    for i, v in enumerate(valores_estado or []):
+        linhas.append((cancer, "SP", ano_inicial + i, v, 0, 100.0 * v, 3 * v))
+    return completar_anos(pd.DataFrame(linhas, columns=[
+        "tipo_cancer", "grupo", "ano", "internacoes", "obitos", "valor_total", "dias_permanencia"]))
+
+
+# ---- A. nomes ----
+checar("A. 'COLO_UTERO' -> 'Colo do útero'", nome_doenca("COLO_UTERO") == "Colo do útero")
+checar("A. 'PELE_NAO_MELANOMA' -> 'Pele não melanoma'", nome_doenca("PELE_NAO_MELANOMA") == "Pele não melanoma")
+checar("A. nome já bonito continua igual", nome_doenca("Pulmão") == "Pulmão")
+checar("A. código desconhecido não some", nome_doenca("NOVO_CANCER") == "Novo cancer")
+checar("A. 1234567 -> '1.234.567'", formatar_numero(1234567) == "1.234.567")
+
+# ---- B. ano sem internação vira zero ----
+s = completar_anos(pd.DataFrame([
+    ("MAMA", "MUNICIPIO", 2013, 5, 0, 1.0, 1), ("MAMA", "MUNICIPIO", 2016, 5, 0, 1.0, 1)],
+    columns=["tipo_cancer", "grupo", "ano", "internacoes", "obitos", "valor_total", "dias_permanencia"]))
+checar("B. 2014 e 2015 entram com zero", s[s["ano"].isin([2014, 2015])]["internacoes"].tolist() == [0, 0])
+
+# ---- C. anos fora do padrão ----
+estavel = [50, 52, 49, 51, 50, 53, 48, 50, 52, 49, 51, 50, 52]
+checar("C. série estável: nenhum ano marcado",
+       anos_fora_do_padrao(serie_doenca(serie(estavel), "MAMA")).empty)
+
+# As pontas não podem ser avaliadas por uma reta ajustada aos outros
+# anos, porque isso extrapola para fora do intervalo observado.
+pontas = [90] + [50] * 11 + [90]
+fora_pontas = anos_fora_do_padrao(serie_doenca(serie(pontas), "MAMA"))
+checar("C. primeiro e último ano não são marcados por extrapolação",
+       fora_pontas.empty)
+ponta = ponta_fora_da_tendencia(serie_doenca(serie(pontas), "MAMA"))
+checar("C. ponta: último ano muito acima da tendência dos anteriores é marcado",
+       ponta["fora"] and ponta["direcao"] == "acima" and ponta["ano"] == 2025)
+pequenos = [0, 0, 1, 0, 1, 1, 0, 2, 1, 1, 2, 1, 6]
+checar("C. ponta com números pequenos: não arrisca (None), como pediu o teste das pontas",
+       ponta_fora_da_tendencia(serie_doenca(serie(pequenos), "MAMA")) is None)
+checar("C. ponta estável: não é marcada",
+       not ponta_fora_da_tendencia(serie_doenca(serie(estavel), "MAMA"))["fora"])
+checar("C. sem contradição aparente, sem frase de ponta",
+       leitura_ponta_projecao(serie_doenca(serie(estavel), "MAMA")) is None)
+
+pico = estavel.copy(); pico[8] = 90  # 2021
+fora = anos_fora_do_padrao(serie_doenca(serie(pico), "MAMA"))
+checar("C. pico marcado no ano certo e como 'acima'",
+       fora["ano"].tolist() == [2021] and fora["direcao"].iloc[0] == "acima")
+
+crescente = [10 + 5 * i for i in range(13)]
+checar("C. crescimento regular não é 'fora do padrão'",
+       anos_fora_do_padrao(serie_doenca(serie(crescente), "MAMA")).empty)
+
+pequena = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1]  # 1 -> 3: "+200%", mas são 2 internações
+checar("C. cidade pequena: 1 -> 3 NÃO é marcado (diferença mínima)",
+       anos_fora_do_padrao(serie_doenca(serie(pequena), "MAMA")).empty)
+
+agudos = [3, 4, 2, 4, 7, 2, 3, 3, 1, 4, 3, 12, 5]  # caso real do print (ovário, 2024)
+fora = anos_fora_do_padrao(serie_doenca(serie(agudos), "MAMA"))
+checar("C. pico de cidade pequena marcado e com aviso de números pequenos",
+       fora["ano"].tolist() == [2024] and bool(fora["numeros_pequenos"].iloc[0]))
+
+# ---- D. Estado na escala da cidade ----
+s = serie([10] * 13, [1000 + 100 * i for i in range(13)])
+estado = ritmo_estadual_na_escala(s, "MAMA")
+checar("D. linha do Estado tem o mesmo total que a cidade",
+       abs(estado["internacoes"].sum() - 130) < 1e-6)
+checar("D. linha do Estado mantém o formato (sobe)",
+       estado["internacoes"].iloc[-1] > estado["internacoes"].iloc[0])
+
+# ---- E. leitura ----
+frases = leitura_evolucao(serie(crescente, [1000] * 13), "MAMA")
+checar("E. cita o crescimento", any("cresceram" in f for f in frases))
+checar("E. compara com o Estado (mais rápido)", any("mais rápido" in f for f in frases))
+frases = leitura_evolucao(serie(agudos), "MAMA")
+checar("E. avisa poucos casos", any("Poucos casos" in f for f in frases))
+
+# ---- F. projeção ----
+proj = projetar(serie_doenca(serie(crescente), "MAMA"))
+checar("F. reta perfeita projeta exato (2026 = 75)", abs(proj["internacoes"].iloc[0] - 75) < 1e-6)
+proj = projetar(serie_doenca(serie([5, 4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0]), "MAMA"))
+checar("F. projeção e faixa nunca negativas", (proj[["internacoes", "minimo"]] >= 0).all().all())
+teste = testar_projecao(serie_doenca(serie(crescente), "MAMA"))
+checar("F. teste de acerto: reta perfeita erra zero", teste["erro_tendencia"] < 1e-6)
+
+# ---- G. uma fonte por cidade (evita contar Rio Claro em dobro) ----
+linhas = pd.DataFrame({"tipo_cancer": ["MAMA", "MAMA"], "origem": ["RIO_CLARO", "SP"], "internacoes": [10, 10]})
+checar("G. cidade nas duas fontes: usa só a estadual",
+       escolher_uma_fonte(linhas)["origem"].tolist() == ["SP"])
+checar("G. cidade só no arquivo próprio: usa ele",
+       escolher_uma_fonte(linhas[linhas["origem"] == "RIO_CLARO"])["origem"].tolist() == ["RIO_CLARO"])
+misto = pd.DataFrame({"tipo_cancer": ["MAMA", "MAMA", "OVARIO"],
+                      "origem": ["RIO_CLARO", "SP", "RIO_CLARO"], "internacoes": [10, 10, 4]})
+escolhido = escolher_uma_fonte(misto)
+checar("G. escolha é por câncer: ovário só da pasta da cidade não some",
+       sorted(zip(escolhido["tipo_cancer"], escolhido["origem"])) == [("MAMA", "SP"), ("OVARIO", "RIO_CLARO")])
+
+caminho = os.path.join(tempfile.mkdtemp(), "teste.db")
+conn = sqlite3.connect(caminho)
+conn.execute("CREATE TABLE internacoes (tipo_cancer TEXT, origem TEXT, municipio TEXT, ano INTEGER, "
+             "obito INTEGER, valor_total REAL, dias_permanencia INTEGER)")
+registros = []
+for ano in range(2013, 2019):
+    registros += [("MAMA", "RIO_CLARO", "RIO_CLARO", ano, 0, 100.0, 2)] * 4  # arquivo de Rio Claro
+    registros += [("MAMA", "SP", "RIO_CLARO", ano, 0, 100.0, 2)] * 4         # as mesmas, no estadual
+    registros += [("MAMA", "SP", "LIMEIRA", ano, 0, 100.0, 2)] * 6
+conn.executemany("INSERT INTO internacoes VALUES (?,?,?,?,?,?,?)", registros)
+s = carregar_serie(conn, "RIO_CLARO")
+conn.close()
+checar("G. banco: Rio Claro conta 4 por ano, não 8",
+       serie_doenca(s, "MAMA")["internacoes"].tolist() == [4] * 6)
+checar("G. banco: Estado soma todas as cidades do arquivo estadual (10 por ano)",
+       serie_doenca(s, "MAMA", "SP")["internacoes"].tolist() == [10] * 6)
+
+# ---- H. base pública real ----
+if os.path.exists(CSV_REAL):
+    real = pd.read_csv(CSV_REAL, sep=";")
+    codigos = {"Mama": "MAMA", "Colo do útero": "COLO_UTERO", "Colorretal": "COLORRETAL",
+               "Ovário": "OVARIO", "Pele não melanoma": "PELE_NAO_MELANOMA",
+               "Pulmão": "PULMAO", "Tireoide": "TIREOIDE"}
+    real["tipo_cancer"] = real["cancer"].map(codigos)
+    real["grupo"] = real["territorio"].map({"Rio Claro": "MUNICIPIO", "São Paulo": "SP"})
+    real["dias_permanencia"] = real["dias_internacao_total"]
+    s = completar_anos(real[["tipo_cancer", "grupo", "ano", "internacoes", "obitos",
+                             "valor_total", "dias_permanencia"]])
+    resumo = resumo_doencas(s)
+    checar("H. base real: Mama é o maior volume em Rio Claro (670)",
+           resumo.iloc[0]["doenca"] == "Mama" and resumo.iloc[0]["internacoes"] == 670)
+    fora, total = ano_atipico_no_estado(s, 2025)
+    # anos_fora_do_padrao continua sem testar as pontas; o último ano
+    # do Estado é avaliado por ponta_fora_da_tendencia (um passo,
+    # números grandes): o salto simultâneo de 2025 volta a aparecer.
+    checar("H. base real: 2025 fora do padrão no Estado na maioria dos cânceres (checagem da ponta)",
+           total == 7 and fora >= 4)
+    mama = serie_doenca(s, "MAMA")
+    checar("H. base real: mama explica por que 2028 aparece abaixo de 2025 sem ser queda",
+           "sem que isso signifique queda" in (leitura_ponta_projecao(mama) or ""))
+    checar("H. base real: a projeção sai da reta, que em 2025 fica abaixo do observado",
+           tendencia_no_periodo(mama)["internacoes"].iloc[-1] < mama["internacoes"].iloc[-1])
+else:
+    print("(pulado) H. base real não encontrada em " + CSV_REAL)
+
+# ---- I. ficha, confiabilidade, investigação, planejamento ----
+from inteligencia import (anos_fora_todos, cancer_de, comparar_faixas, confiabilidade,
+                          destaques_cancer, evidencias_planejamento, ficha_cancer,
+                          leitura_faixas, pressao_projetada, quando_aparece)
+
+checar("I. 'câncer colorretal' sem 'de'; 'câncer de mama' com", cancer_de("COLORRETAL") == "câncer colorretal"
+       and cancer_de("MAMA") == "câncer de mama")
+
+dois = pd.concat([
+    serie([10] * 13, [1000] * 13, cancer="MAMA"),
+    serie([10] * 13, [1000] * 13, cancer="OVARIO"),
+], ignore_index=True)
+dois.loc[dois["tipo_cancer"] == "OVARIO", "valor_total"] *= 3  # ovário: mesma quantidade, valor 3x
+f = ficha_cancer(dois, "OVARIO")
+checar("I. ficha: 50% das internações e 75% do valor registrado", abs(f["pct_internacoes"] - 50) < 1e-6
+       and abs(f["pct_valor"] - 75) < 1e-6)
+checar("I. destaque: 'pesa mais no valor' quando valor% > internações%",
+       any("Pesa mais no valor" in d for d in destaques_cancer(dois, "OVARIO")))
+checar("I. destaque não aparece para quem não pesa mais no valor",
+       not any("Pesa mais no valor" in d for d in destaques_cancer(dois, "MAMA")))
+
+avisos = dict((t[:20], n) for n, t in confiabilidade(serie(agudos), "MAMA", duplicados=["MAMA"]))
+textos = " ".join(t for _, t in confiabilidade(serie(agudos), "MAMA", duplicados=["MAMA"]))
+checar("I. confiabilidade avisa duplicidade, poucos casos e falta de população",
+       "duplicidade" in textos and "Poucos casos" in textos and "população" in textos)
+checar("I. série grande e sem duplicidade: sem aviso de poucos casos",
+       "Poucos casos" not in " ".join(t for _, t in confiabilidade(serie(crescente), "MAMA")))
+
+varios = pd.concat([serie(pico, cancer="MAMA"), serie(agudos, cancer="OVARIO")], ignore_index=True)
+todos = anos_fora_todos(varios)
+checar("I. investigação junta os anos fora do padrão de todos os cânceres",
+       sorted(zip(todos["doenca"], todos["ano"])) == [("Mama", 2021), ("Ovário", 2024)])
+
+aparece = quando_aparece(serie([0, 0, 3, 4, 0, 5, 6, 7, 8, 9, 10, 11, 12]))
+linha = aparece.iloc[0]
+checar("I. quando aparece: primeiro ano 2015, pico 2025, 10 de 13 anos",
+       linha["primeiro_ano"] == 2015 and linha["ano_de_pico"] == 2025 and linha["anos_com_internacao"] == "10 de 13")
+
+from inteligencia import leitura_aparece, tabela_aparece_para_tela
+tela = tabela_aparece_para_tela(aparece, 2013)
+checar("I. tabela 'cresce mais rápido': uma coluna 'Observação' só quando algum câncer foge do normal, e só preenchida para ele",
+       list(tela.columns) == ["Câncer", "Crescimento por ano", "Ano com mais internações", "Internações naquele ano",
+                              "Observação"]
+       and tela.iloc[0]["Observação"] == "só em 10 de 13 anos, desde 2015")
+sempre = pd.concat([serie([5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17], cancer="MAMA"),
+                    serie([9, 9, 9, 8, 8, 8, 7, 7, 7, 6, 6, 6, 5], cancer="OVARIO")], ignore_index=True)
+ap2 = quando_aparece(sempre)
+tela2 = tabela_aparece_para_tela(ap2)
+checar("I. tabela: se todos aparecem sempre, some a coluna de observação; mais rápido em cima",
+       list(tela2.columns) == ["Câncer", "Crescimento por ano", "Ano com mais internações", "Internações naquele ano"]
+       and tela2.iloc[0]["Câncer"] == "Mama" and tela2.iloc[0]["Crescimento por ano"].startswith("+"))
+txt = " ".join(leitura_aparece(ap2, {2018: 6}, 2025, 2013)).lower()
+checar("I. leitura: mais rápido, queda, pico recente e aviso de meses estimados; sem causa nem R$",
+       "mama é o que mais cresce" in txt and "com tendência de queda: ovário" in txt
+       and "todos os cânceres tiveram internações em todos os anos do período." in txt and "estimado para 12 meses" in txt
+       and "não é previsão" in txt and not any(p in txt for p in ("porque", "devido", "r$")))
+checar("I. leitura: o 'ponto mais alto' conta a partir do último ano dos dados (2024 ou 2025), com plural certo",
+       "em 1 de 2 cânceres o ano com mais internações foi 2024 ou 2025" in txt)
+raro_txt = " ".join(leitura_aparece(quando_aparece(serie([0, 0, 3, 4, 0, 5, 6, 7, 8, 9, 10, 11, 12])), None, 2025, 2013)).lower()
+checar("I. leitura: câncer que só começou depois leva 'desde 2015'; sem 'desde' quando sempre existiu",
+       "teve internações em 10 dos 13 anos, desde 2015" in raro_txt
+       and "desde 2013" not in " ".join(leitura_aparece(ap2, None, 2025, 2013)).lower())
+checar("I. leitura: nenhum câncer com pico recente não vira 'em 0 de n'",
+       "nenhum câncer teve o ano com mais internações em 2024 ou 2025" in " ".join(
+           leitura_aparece(quando_aparece(serie([20, 18, 16, 14, 12, 10, 9, 8, 7, 6, 5, 4, 3])), None, 2025, 2013)).lower())
+
+faixas = pd.DataFrame([
+    ("MAMA", ano, faixa, n) for ano in range(2013, 2025)
+    for faixa, n in (("até 39 anos", 10), ("40 a 49", 10), ("50 a 69", 10 if ano < 2019 else 30), ("70 ou mais", 10))
+], columns=["tipo_cancer", "ano", "faixa", "internacoes"])
+tabela, periodos = comparar_faixas(faixas, "MAMA")
+checar("I. faixas: dois períodos e 50-69 sobe de 25% para 50%",
+       periodos == ["2013–2018", "2019–2024"]
+       and abs(tabela[(tabela["faixa"] == "50 a 69") & (tabela["periodo"] == "2019–2024")]["pct"].iloc[0] - 50) < 1e-6)
+checar("I. leitura das faixas cita a faixa que mais mudou", "50 a 69" in leitura_faixas(tabela, periodos)[0])
+
+# ---- 2026 entrando só com os meses já publicados (20/10/2026): ano parcial é marcado, nunca tratado como ano completo ----
+from inteligencia import ajustar_meses, anos_incompletos, registrado
+_anos26 = list(range(2013, 2027))
+_s26 = pd.DataFrame({"tipo_cancer": "MAMA", "grupo": "MUNICIPIO", "ano": _anos26, "internacoes": [120] * 13 + [60],
+                     "obitos": 5, "valor_total": 1000.0, "dias_permanencia": 300})
+_s26 = ajustar_meses(_s26, {a: 12 for a in _anos26[:-1]} | {2026: 6})
+checar("2026 com 6 meses: o ano é marcado como incompleto (e só ele)", anos_incompletos(_s26) == {2026: 6})
+checar("2026 com 6 meses: o REGISTRADO é 60 e o comparável (média mensal x 12) é 120, separados",
+       int(registrado(_s26, "internacoes").iloc[-1]) == 60 and int(_s26["internacoes"].iloc[-1]) == 120)
+checar("2026 parcial não cria zero nos outros anos nem muda o total registrado do período",
+       int(registrado(_s26, "internacoes").sum()) == 120 * 13 + 60)
+
+# ---- internações de um ano, mês a mês: residência x hospital, mês sem dado não é zero (20/10/2026) ----
+import sqlite3
+from inteligencia import PERSPECTIVAS, anos_com_dados, internacoes_do_periodo, leitura_internacoes_periodo
+_c = sqlite3.connect(":memory:")
+_c.execute("CREATE TABLE internacoes (origem TEXT, municipio TEXT, tipo_cancer TEXT, ano INT, mes INT, municipio_hospital TEXT)")
+_linhas = []
+for _mes in (1, 3, 4, 5, 6, 7):                        # 2026: o DATASUS só listou estes meses (fevereiro e agosto em diante faltam)
+    _linhas += [("SP", "RIO_CLARO", "MAMA", 2026, _mes, "354390")] * 2          # moradoras internadas na própria cidade
+    _linhas += [("SP", "RIO_CLARO", "MAMA", 2026, _mes, "351620")]              # moradora internada em outra cidade (Barretos)
+    _linhas += [("SP", "OUTRO_ESTADO", "COLO_UTERO", 2026, _mes, "354390")]     # mulher de fora internada em Rio Claro
+    _linhas += [("SP", "CAMPINAS", "MAMA", 2026, _mes, "350950")]
+_linhas += [("SP", "RIO_CLARO", "MAMA", 2025, m, "354390") for m in range(1, 13)]
+_linhas += [("SP", "CAMPINAS", "MAMA", 2025, m, "350950") for m in range(1, 13)]
+_c.executemany("INSERT INTO internacoes VALUES (?,?,?,?,?,?)", _linhas)
+mor = internacoes_do_periodo(_c, "RIO_CLARO", 3543907, 2026, "moradoras")
+hos = internacoes_do_periodo(_c, "RIO_CLARO", 3543907, 2026, "hospitais")
+checar("ano: moradoras e hospitais da cidade são perguntas diferentes (3 x 3 por mês nos 6 meses: 18 e 18, mas compostos diferentes)",
+       mor["total"] == 18 and hos["total"] == 18 and mor["por_cancer"] == {"MAMA": 18} and hos["por_cancer"] == {"MAMA": 12, "COLO_UTERO": 6})
+checar("ano: mês que a fonte não tem é None (sem dado), nunca zero", mor["meses"][2] is None and mor["meses"][8] is None
+       and mor["meses"][1] == 3 and mor["sem_dado"] == [2, 8, 9, 10, 11, 12] and mor["ultimo_mes"] == 7)
+checar("ano: mês que a fonte TEM e a seleção não registra é zero de verdade",
+       internacoes_do_periodo(_c, "RIO_CLARO", 3543907, 2026, "moradoras", cancer="COLO_UTERO")["meses"][1] == 0
+       and internacoes_do_periodo(_c, "RIO_CLARO", 3543907, 2026, "moradoras", cancer="COLO_UTERO")["meses"][2] is None)
+checar("ano: 2025 completo soma os 12 meses e não tem mês sem dado",
+       internacoes_do_periodo(_c, "RIO_CLARO", 3543907, 2025)["total"] == 12 and not internacoes_do_periodo(_c, "RIO_CLARO", 3543907, 2025)["sem_dado"])
+checar("ano: anos disponíveis vêm do banco", anos_com_dados(_c) == [2025, 2026] and anos_com_dados(sqlite3.connect(":memory:")) == [])
+lt = " ".join(leitura_internacoes_periodo(mor, "Rio Claro"))
+checar("ano: a leitura diz o último mês, que mês sem dado não é zero e que o ano está incompleto",
+       "julho" in lt and "não é zero" in lt and "incompleto" in lt and "não são casos novos" in lt.replace("Não são", "não são"))
+lt25 = " ".join(leitura_internacoes_periodo(internacoes_do_periodo(_c, "RIO_CLARO", 3543907, 2025), "Rio Claro"))
+checar("ano: ano completo não leva o aviso de ano incompleto", "incompleto" not in lt25)
+vazio = internacoes_do_periodo(_c, "RIO_CLARO", 3543907, 2030)
+checar("ano: ano sem nenhum mês no banco diz 'este dado não existe' (e não zero)",
+       vazio["na_fonte"] == [] and "Este dado não existe" in leitura_internacoes_periodo(vazio, "Rio Claro")[0])
+_antigo = sqlite3.connect(":memory:")
+_antigo.execute("CREATE TABLE internacoes (origem TEXT, municipio TEXT, tipo_cancer TEXT, ano INT)")
+checar("ano: banco antigo, sem a coluna mes, devolve None e a leitura manda recarregar",
+       internacoes_do_periodo(_antigo, "RIO_CLARO", 3543907, 2025) is None
+       and "carga" in leitura_internacoes_periodo(None, "Rio Claro")[0])
+try:
+    internacoes_do_periodo(_c, "RIO_CLARO", 3543907, 2026, "xx")
+    _erro_perspectiva = False
+except ValueError:
+    _erro_perspectiva = True
+checar("ano: perspectiva inválida é erro, não resposta silenciosa", _erro_perspectiva and PERSPECTIVAS == ("moradoras", "hospitais"))
+
+# ---- gráfico de idade: todos os cânceres, um ano só, cidade sem dados, zero em faixa (pedido da Secretaria, 20/10/2026) ----
+from inteligencia import TODOS_CANCERES, totais_faixas
+dois = pd.concat([faixas, faixas.assign(tipo_cancer="OVARIO", internacoes=5)], ignore_index=True)
+t_todos, p_todos = comparar_faixas(dois, TODOS_CANCERES)
+t_mama, _ = comparar_faixas(dois, "MAMA")
+checar("I. faixas: 'todos os cânceres' soma os cânceres (total = mama + ovário)",
+       p_todos == ["2013–2018", "2019–2024"]
+       and sum(totais_faixas(t_todos).values()) == sum(totais_faixas(t_mama).values()) + 12 * 4 * 5)
+um_ano = faixas[faixas["ano"] == 2020]
+t1, p1 = comparar_faixas(um_ano, "MAMA")
+checar("I. faixas: um único ano vira UM período (sem período vazio mostrando 0%)",
+       p1 == ["2020"] and len(t1) == 4 and abs(t1["pct"].sum() - 100) < 1e-6 and "Só há idade registrada em 2020" in leitura_faixas(t1, p1)[0])
+vazio, pv = comparar_faixas(faixas, "OVARIO")
+checar("I. faixas: câncer sem registro na cidade devolve 'sem dados' (None), nunca uma tabela de zeros",
+       pv is None and vazio.empty and leitura_faixas(vazio, pv) == [])
+checar("I. faixas: sem nenhuma linha também não quebra com 'todos'",
+       comparar_faixas(faixas.iloc[0:0], TODOS_CANCERES)[1] is None)
+sem_70 = faixas[faixas["faixa"] != "70 ou mais"]
+t70, p70 = comparar_faixas(sem_70, "MAMA")
+checar("I. faixas: faixa sem registro aparece com 0 internações e 0% (sem dividir por zero) e as outras somam 100%",
+       t70[t70["faixa"] == "70 ou mais"]["internacoes"].sum() == 0
+       and all(abs(g["pct"].sum() - 100) < 1e-6 for _, g in t70.groupby("periodo")))
+checar("I. faixas: totais por período são a soma exata das faixas (6 anos x 40 e 6 anos x 60)",
+       totais_faixas(t_mama) == {"2013–2018": 240, "2019–2024": 360})
+
+pressao = pressao_projetada(serie(crescente, [1000] * 13), "MAMA")
+checar("I. pressão projetada: internações, dias e valor registrado em 2028",
+       set(pressao) == {"internacoes", "dias_permanencia", "valor_total"}
+       and pressao["internacoes"]["ano"] == 2028 and abs(pressao["internacoes"]["previsto"] - 85) < 1e-6)
+ev = evidencias_planejamento(pd.concat([serie(crescente, [1000] * 13, cancer="MAMA"),
+                                        serie(estavel, [1000] * 13, cancer="OVARIO")], ignore_index=True))
+checar("I. planejamento: quem cresce vem primeiro, com sinal de crescimento e linha de ação do INCA",
+       ev[0]["tipo_cancer"] == "MAMA" and any("crescem" in s for s in ev[0]["sinais"])
+       and "mamografia" in ev[0]["linha_de_acao"])
+checar("I. planejamento: nenhuma evidência traz valor de orçamento",
+       not any("orçamento" in s.lower() for e in ev for s in e["sinais"]))
+
+# ---- R. radar do futuro ----
+cresce_liso = [40 + 4 * i for i in range(13)]           # cresce firme, reta perfeita
+estado_lento = [1000 + 20 * i for i in range(13)]        # Estado cresce ~1,6% ao ano
+estavel_r = [50, 52, 49, 51, 50, 53, 48, 50, 52, 49, 51, 50, 52]
+pouco = [2, 3, 2, 4, 3, 4, 5, 4, 6, 5, 6, 7, 7]          # cresce, mas com poucas internações
+base_r = pd.concat([serie(cresce_liso, estado_lento, "MAMA"), serie(estavel_r, [1000] * 13, "OVARIO"),
+                    serie(pouco, [500 + 10 * i for i in range(13)], "TIREOIDE")], ignore_index=True)
+radar = {r["tipo_cancer"]: r for r in radar_futuro(base_r)}
+checar("R. cresce firme, confiável e mais rápido que o Estado: alerta", radar["MAMA"]["nivel"] == "alerta")
+checar("R. série estável: estável, sem sinal", radar["OVARIO"]["nivel"] == "estavel" and not radar["OVARIO"]["sinais"])
+checar("R. poucas internações nunca viram alerta (no máximo observar, com cuidado escrito)",
+       radar["TIREOIDE"]["nivel"] != "alerta" and any("poucas internações" in c for c in radar["TIREOIDE"]["cuidados"]))
+checar("R. alerta vem antes de estável na ordem", [r["nivel"] for r in radar_futuro(base_r)][0] == "alerta")
+checar("R. nenhum sinal fala em orçamento ou R$",
+       not any("R$" in t or "orçamento" in t for r in radar.values() for t in r["sinais"] + r["cuidados"]))
+checar("R. futuro comparado com o nível da tendência (não com o último ano)",
+       abs(radar["MAMA"]["internacoes_hoje"] - cresce_liso[-1]) < 0.5 and radar["MAMA"]["internacoes_a_mais"] > 0)
+
+# ---- M. anos com meses que a fonte não oferece ----
+def banco_com_meses(meses_2018=6, com_coluna_mes=True):
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE internacoes (tipo_cancer, origem, municipio, ano, " + ("mes, " if com_coluna_mes else "")
+                 + "obito, valor_total, dias_permanencia)")
+    linhas = []
+    for ano in range(2013, 2025):
+        for mes in range(1, 13):
+            if ano == 2018 and mes > meses_2018:
+                continue  # o DATASUS não oferece estes meses
+            linhas += [("MAMA", "SP", "RIO_CLARO", ano, mes, 0, 100.0, 2)] * 5
+            linhas += [("MAMA", "SP", "OUTRA", ano, mes, 1, 100.0, 2)] * 95
+    if not com_coluna_mes:
+        linhas = [l[:4] + l[5:] for l in linhas]
+    conn.executemany("INSERT INTO internacoes VALUES (" + ",".join("?" * len(linhas[0])) + ")", linhas)
+    return conn
+
+sm = carregar_serie(banco_com_meses(), "RIO_CLARO", "SP")
+mama = serie_doenca(sm, "MAMA")
+checar("M. 2018 com 6 de 12 meses: vale a média mensal x 12 (60), não 30",
+       mama.loc[mama["ano"] == 2018, "internacoes"].iloc[0] == 60
+       and mama.loc[mama["ano"] == 2018, "internacoes_reg"].iloc[0] == 30)
+checar("M. com o ajuste, 2018 não vira 'ano fora do padrão' (a queda era falta de meses)",
+       anos_fora_do_padrao(mama).empty)
+checar("M. totais do período continuam os REGISTRADOS", resumo_doencas(sm).iloc[0]["internacoes"] == 5 * 12 * 11 + 5 * 6
+       and ficha_cancer(sm, "MAMA")["internacoes"] == 690)
+checar("M. anos incompletos identificados (pelo Estado)", anos_incompletos(sm) == {2018: 6})
+checar("M. confiabilidade avisa os meses que a fonte não oferece",
+       any("DATASUS não oferece" in t and "2018 (6 de 12)" in t for _, t in confiabilidade(sm, "MAMA")))
+sv = carregar_serie(banco_com_meses(com_coluna_mes=False), "RIO_CLARO", "SP")
+checar("M. banco antigo (sem coluna mes): sem ajuste e pede para recarregar",
+       serie_doenca(sv, "MAMA").loc[lambda d: d["ano"] == 2018, "internacoes"].iloc[0] == 30
+       and any("sem o mês" in t for _, t in confiabilidade(sv, "MAMA")))
+
+# ---- N. população: taxa por 100 mil mulheres e ranking entre cidades (banco sintético, contas conferidas à mão) ----
+import sqlite3 as _sq
+from inteligencia import leitura_ranking, ranking_municipios
+
+
+def banco_ranking(com_populacao=True, com_codigo=True):
+    c = _sq.connect(":memory:")
+    c.execute("CREATE TABLE internacoes (origem TEXT, municipio TEXT, " + ("codigo_ibge INTEGER, " if com_codigo else "")
+              + "tipo_cancer TEXT, ano INTEGER, mes INTEGER)")
+    cols = "(origem, municipio, " + ("codigo_ibge, " if com_codigo else "") + "tipo_cancer, ano, mes)"
+    marca = "(?, ?, ?, ?, ?, ?)" if com_codigo else "(?, ?, ?, ?, ?)"
+
+    def pôr(codigo, cancer, por_mes_2022, por_mes_2023, municipio="X"):
+        for ano, meses, qtd in ((2022, range(1, 13), por_mes_2022), (2023, range(1, 7), por_mes_2023)):
+            for mes in meses:
+                for _ in range(qtd):
+                    linha = ("SP", municipio) + ((codigo,) if com_codigo else ()) + (cancer, ano, mes)
+                    c.execute(f"INSERT INTO internacoes {cols} VALUES {marca}", linha)
+    pôr(350010, "MAMA", 5, 5)            # A: 60 em 2022; 30 em 2023 (6 meses) -> 60 ajustado; média 60/ano
+    pôr(350020, "MAMA", 1, 1)            # B: 12 e 6 (-> 12); média 12/ano
+    pôr(3543907, "MAMA", 2, 2)           # Rio Claro (código de 7 dígitos): 24 e 12 (-> 24); média 24/ano
+    pôr(350030, "MAMA", 9, 9)            # C: muitas internações, mas só 10 mil mulheres: fica fora do ranking
+    pôr(410000, "MAMA", 7, 7)            # moradora de outro estado (código 41...): nunca entra
+    for mes in range(1, 11):             # B: colo do útero, só em 2022 (10 internações)
+        c.execute(f"INSERT INTO internacoes {cols} VALUES {marca}",
+                  ("SP", "X") + ((350020,) if com_codigo else ()) + ("COLO_UTERO", 2022, mes))
+    if com_populacao:
+        c.execute("CREATE TABLE populacao_mulheres (codigo_ibge TEXT, municipio TEXT, ano INTEGER, populacao INTEGER, fonte TEXT)")
+        c.executemany("INSERT INTO populacao_mulheres VALUES (?, ?, 2022, ?, 'teste')",
+                      [("3500105", "Cidade A", 100_000), ("3500200", "Cidade B", 50_000), ("3543907", "Rio Claro", 106_123),
+                       ("3500300", "Cidade C", 10_000), ("3500400", "Cidade D", 80_000)])
+    c.commit()
+    return c
+
+
+rk = ranking_municipios(banco_ranking(), "MAMA")
+por = {r.municipio: r for r in rk.itertuples()}
+checar("N. ranking: só cidades com 20 mil mulheres ou mais (a de 10 mil e as de outro estado ficam fora)",
+       set(rk["municipio"]) == {"Cidade A", "Cidade B", "Rio Claro", "Cidade D"})
+checar("N. taxa por 100 mil: A = 60/100 mil = 60,0 por ano (o ano de 6 meses é compensado: 30 x 12/6)",
+       abs(por["Cidade A"].taxa - 60.0) < 1e-9 and abs(por["Cidade B"].taxa - 24.0) < 1e-9)
+checar("N. cruza o código de 7 dígitos do IBGE com o de 6 do SIH: Rio Claro = 24/106.123 x 100 mil",
+       abs(por["Rio Claro"].taxa - 24 / 106123 * 100000) < 1e-9)
+checar("N. ordem da maior para a menor taxa; cidade sem internação entra com 0 e fica por último",
+       list(rk["municipio"]) == ["Cidade A", "Cidade B", "Rio Claro", "Cidade D"] and por["Cidade D"].taxa == 0
+       and list(rk["posicao"]) == [1, 2, 3, 4])
+rc = ranking_municipios(banco_ranking(), "COLO_UTERO")
+checar("N. por câncer: a média usa TODOS os anos da base (colo só em 2022: 10 em 2 anos = 5/ano = 10,0 por 100 mil)",
+       abs(rc.set_index("municipio").loc["Cidade B", "taxa"] - 10.0) < 1e-9)
+checar("N. câncer None soma os 7 cânceres (B: 12 + 10 = mais que só a mama)",
+       ranking_municipios(banco_ranking(), None).set_index("municipio").loc["Cidade B", "taxa"] > 24.0)
+checar("N. sem a tabela da população (banco antes de baixar_populacao): vazio, sem erro",
+       ranking_municipios(banco_ranking(com_populacao=False), "MAMA").empty)
+checar("N. banco antigo, sem a coluna codigo_ibge: vazio, sem erro",
+       ranking_municipios(banco_ranking(com_codigo=False), "MAMA").empty)
+texto = leitura_ranking(rk, "MAMA", "Rio Claro", 3543907)
+checar("N. leitura: diz a taxa por 100 mil, a posição da cidade do painel (3 de 4) e que NÃO é incidência",
+       "60,0 por 100 mil mulheres" in texto and "posição **3** de 4" in texto and "Não é incidência" in texto
+       and "câncer de mama" in texto and "vai " not in texto.lower().replace("moram", ""))
+
+# ---- O. polos de tratamento: onde as internações ACONTECEM (hospital) x onde a mulher MORA (banco sintético, contas à mão) ----
+from inteligencia import leitura_atendimento, ranking_atendimento
+
+
+def banco_polos(com_fluxo=True):
+    c = _sq.connect(":memory:")
+    c.execute("CREATE TABLE internacoes (origem TEXT, municipio TEXT, codigo_ibge INTEGER, "
+              + ("municipio_hospital TEXT, uf_residencia TEXT, " if com_fluxo else "") + "tipo_cancer TEXT, ano INTEGER, mes INTEGER)")
+
+    def pôr(n, residencia, hospital, municipio="X", cancer="MAMA"):
+        for _ in range(n):
+            if com_fluxo:
+                c.execute("INSERT INTO internacoes VALUES ('SP', ?, ?, ?, 'SP', ?, 2022, 1)", (municipio, residencia, hospital, cancer))
+            else:
+                c.execute("INSERT INTO internacoes VALUES ('SP', ?, ?, ?, 2022, 1)", (municipio, residencia, cancer))
+    pôr(30, 350500, "350500")                         # H trata 30 moradoras dela
+    pôr(50, 350010, "350500")                         # ... 50 de outra cidade de SP
+    pôr(20, 410000, "350500", municipio="OUTRO_ESTADO")  # ... e 20 de outro estado
+    pôr(10, 350500, "350600")                         # 10 moradoras de H se tratam em outro hospital (H2)
+    pôr(40, 350010, "350010")                         # A trata 40 das próprias (ela mandou 50 para H)
+    pôr(60, 350700, "350700", cancer="COLO_UTERO")    # outra cidade, só colo do útero
+    c.execute("CREATE TABLE populacao_mulheres (codigo_ibge TEXT, municipio TEXT, ano INTEGER, populacao INTEGER, fonte TEXT)")
+    c.executemany("INSERT INTO populacao_mulheres VALUES (?, ?, 2022, 50000, 't')",
+                  [("3505005", "Cidade H"), ("3500105", "Cidade A"), ("3507007", "Cidade G")])
+    c.commit()
+    return c
+
+
+pl = ranking_atendimento(banco_polos(), "MAMA", minimo=40)
+por = {r.municipio: r for r in pl.itertuples()}
+checar("O. polos: H trata 100 internações (30 + 50 + 20) e A trata 40; ordem do maior para o menor",
+       list(pl["municipio"]) == ["Cidade H", "Cidade A"] and por["Cidade H"].internacoes == 100)
+checar("O. polos: H = 30% de moradoras, 50% de outras cidades de SP, 20% de outros estados (conta à mão)",
+       abs(por["Cidade H"].pct_da_cidade - 30) < 1e-9 and abs(por["Cidade H"].pct_outras_cidades - 50) < 1e-9
+       and abs(por["Cidade H"].pct_outros_estados - 20) < 1e-9)
+checar("O. polos: razão = trata 100 e as moradoras dela internam 40 (30 em H + 10 em outro hospital) = 2,5 vezes",
+       abs(por["Cidade H"].moradoras - 40) < 1e-9 and abs(por["Cidade H"].razao - 2.5) < 1e-9)
+checar("O. polos: A trata 40 e as moradoras dela internam 90 (40 em A + 50 em H): razão 0,44, ou seja, manda mais do que trata",
+       por["Cidade A"].moradoras == 90 and abs(por["Cidade A"].razao - 40 / 90) < 1e-9)
+checar("O. polos: o mínimo de internações tira as cidades pequenas (padrão 100: só H fica)",
+       list(ranking_atendimento(banco_polos(), "MAMA")["municipio"]) == ["Cidade H"])
+checar("O. polos: por câncer (colo do útero) só aparece a cidade que trata colo, sem misturar com a mama",
+       list(ranking_atendimento(banco_polos(), "COLO_UTERO", minimo=50)["municipio"]) == ["Cidade G"])
+checar("O. polos: banco antigo, sem o município do hospital: vazio, sem erro", ranking_atendimento(banco_polos(com_fluxo=False), "MAMA").empty)
+texto = leitura_atendimento(pl, "MAMA", "Cidade H", 3505005)
+checar("O. leitura: diz 'trata 2,5 vezes', a posição da cidade, que conta o HOSPITAL e que não explica o motivo",
+       "2,5 vezes" in texto and "posição **1** de 2" in texto and "**acontece**" in texto and "não explica o motivo" in texto
+       and "vai " not in texto.lower())
+
+print()
+if falhas:
+    print(f"{len(falhas)} checagem(ns) falharam.")
+    raise SystemExit(1)
+print("Todas as checagens passaram.")

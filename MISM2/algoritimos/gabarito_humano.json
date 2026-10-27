@@ -1,0 +1,74 @@
+[
+ {
+  "pergunta": "ESTOU  COM NODULO O QUE FAÇO?",
+  "esperado": "sintoma",
+  "cancer": null,
+  "conjunto": "humano",
+  "medida_antes_da_correcao": "certa"
+ },
+ {
+  "pergunta": "QUERO SABER QUAL O CANCER QUE MAIS CRESCER NO ESTADO DE SAO PAULO?",
+  "esperado": "estado",
+  "aceitavel": [
+   "evolucao"
+  ],
+  "cancer": null,
+  "conjunto": "humano",
+  "medida_antes_da_correcao": "certa"
+ },
+ {
+  "pergunta": "QUAIS A TERS CIDADES QUE MAIS TEM CANCER DE MAMA? PROPORCIONALMENTE.",
+  "esperado": "sem_dados",
+  "aceitavel": [
+   "comparar_cidades"
+  ],
+  "cancer": "MAMA",
+  "conjunto": "humano",
+  "medida_antes_da_correcao": "palpite (a Lia não soube; o autor aceitou)"
+ },
+ {
+  "pergunta": "QUAL A PRECISÃO DE CRESCIMENTO DE CANCER EM RIO CLARO?",
+  "esperado": "evolucao",
+  "cancer": null,
+  "conjunto": "humano",
+  "medida_antes_da_correcao": "certa"
+ },
+ {
+  "pergunta": "A GESTORA DE SAUDE RIO CLARO DEVE SE ATENTAR A QUAL CANCER COM MAIS ATENÇÃO?",
+  "esperado": "atencao",
+  "cancer": null,
+  "conjunto": "humano",
+  "medida_antes_da_correcao": "certa"
+ },
+ {
+  "pergunta": "QUALO CAMINHO PARA QUEM ACABOU DE DESCOBRI UM CA DE PULMÃO?",
+  "esperado": "apoio",
+  "cancer": "PULMAO",
+  "conjunto": "humano",
+  "medida_antes_da_correcao": "ERRADA: as regras responderam sobre_ia com confiança"
+ },
+ {
+  "pergunta": "Compare CSA de mama com o de melanoma",
+  "esperado": "mais_aparece",
+  "cancer": "MAMA",
+  "conjunto": "humano",
+  "medida_antes_da_correcao": "ERRADA (n): palpites sem sentido; o melanoma passava despercebido"
+ },
+ {
+  "pergunta": "Endereço  de algum hospitalde cancer",
+  "esperado": "onde_atendida",
+  "aceitavel": [
+   "apoio"
+  ],
+  "cancer": null,
+  "conjunto": "humano",
+  "medida_antes_da_correcao": "respondeu a página da cidade, sem apontar os hospitais de câncer (autor pediu 'contato de hospital especializado')"
+ },
+ {
+  "pergunta": "quero contato de hospital especializado em câncer",
+  "esperado": "apoio",
+  "cancer": null,
+  "conjunto": "humano",
+  "medida_antes_da_correcao": "palpites sem apoio (não chegou a Hospitais no Estado)"
+ }
+]

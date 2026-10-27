@@ -1,0 +1,15 @@
+# Tema do painel (lido quando o Streamlit roda a partir da raiz do
+# projeto, como em iniciar_dashboard.bat). Cor principal = o azul
+# dos gráficos, em vez do vermelho padrão (que soa como alerta).
+[theme]
+base = "light"
+primaryColor = "#2a78d6"
+backgroundColor = "#f8f7fb"
+secondaryBackgroundColor = "#efedf5"
+textColor = "#292541"
+
+# O painel (app.py) é a entrada; a lâmina de apoio à mulher
+# (dashboard/pages/apoio.py) abre pelo botão vermelho "Apoio à mulher" no topo, sem o
+# menu automático de páginas em cima da Lia.
+[client]
+showSidebarNavigation = false

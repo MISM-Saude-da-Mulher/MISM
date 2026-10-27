@@ -1,0 +1,114 @@
+name: Testes do Escudo
+
+on:
+  pull_request:
+  push:
+
+# Os testes do sistema atual (sem banco: usam dados sintéticos e a
+# base pública analises/base_preditiva_2013_2025.csv).
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Instala dependências
+        run: pip install -r requirements.txt pyarrow
+      - name: Inteligência (números do painel)
+        working-directory: algoritimos
+        run: python teste_inteligencia.py
+      - name: Lia
+        working-directory: algoritimos
+        run: python teste_lia.py
+      - name: Alcance do banco (a Lia sabe o que tem)
+        working-directory: algoritimos
+        run: python teste_alcance.py
+      - name: Glossário da Lia (termos técnicos)
+        working-directory: algoritimos
+        run: python teste_glossario.py
+      - name: Apoio à mulher (catálogo e Lia)
+        working-directory: algoritimos
+        run: python teste_apoio.py
+      - name: Fluxo de pacientes (mulheres de outros estados atendidas em SP)
+        working-directory: algoritimos
+        run: |
+          python teste_fluxo.py
+          python teste_hospital.py
+      - name: Hospitais habilitados em oncologia (lista oficial x catálogo)
+        working-directory: etl
+        run: python teste_cruzar_hospitais_oncologia.py
+      - name: Unidades de saúde da cidade (CNES)
+        working-directory: algoritimos
+        run: python teste_unidades_saude.py
+      - name: Comparar cidades (sem população)
+        working-directory: algoritimos
+        run: python teste_comparar.py
+      - name: Conversa (fora do painel)
+        working-directory: algoritimos
+        run: python teste_conversa.py
+      - name: Previsão com validação (backtest, comparação com repetir o último ano)
+        working-directory: algoritimos
+        run: python teste_previsao.py
+      - name: Entendimento da pergunta (gabarito em 3 conjuntos x caixa antiga)
+        working-directory: algoritimos
+        run: python teste_entendimento.py
+      - name: Assistente da Lia (Gemini simulado, conferência do texto, segurança)
+        working-directory: algoritimos
+        run: python teste_assistente.py
+      - name: Pergunte à Lia no Apoio à mulher (busca no catálogo, segurança, sem gravar)
+        working-directory: algoritimos
+        run: python teste_apoio_busca.py
+      - name: Cobertura por tipo de câncer no Apoio (busca não mistura cânceres, sintomas, falhas, privacidade)
+        working-directory: algoritimos
+        run: |
+          python teste_apoio_cancer.py
+          python teste_conversa_apoio.py
+          python teste_conferir_links.py
+      - name: Carga e ferramentas do ETL
+        working-directory: etl
+        run: |
+          python teste_carga_duplicidade.py
+          python teste_carga_robusta.py
+          python teste_carga_territorial.py
+          python teste_selecao_csv.py
+          python teste_listar_hospitais_por_cidade.py
+          python teste_deteccao_separador.py
+          python teste_completude_meses.py
+          python teste_investigar_2025.py
+          python teste_baixar_sih_sp.py
+          python teste_carga_fluxo.py
+          python teste_criar_tabela_hospitais.py
+          python teste_baixar_populacao.py
+          python teste_baixar_sia_oncologia.py
+          python teste_baixar_sim_cnes.py
+          python teste_baixar_centroides.py
+          python teste_validar_bases_novas.py
+          python teste_listar_meses_pysus.py
+          python teste_sondar_mortalidade_geral.py
+      - name: Painel (clica em tudo)
+        run: python dashboard/teste_painel.py
+      - name: Lâmina de apoio (clica em tudo)
+        run: python dashboard/teste_apoio_tela.py
+      - name: Página Onde ser atendida (clica em tudo)
+        run: python dashboard/teste_onde_atendida_tela.py
+      - name: Onde ser atendida (lógica: CNES + catálogo conferido)
+        working-directory: algoritimos
+        run: python teste_onde_atendida.py
+      - name: Caixa de busca de Onde ser atendida (frases reais, erro de digitação, exame x médico)
+        working-directory: algoritimos
+        run: python teste_busca_caixa.py
+      - name: Lista de hospitais habilitados em oncologia (leitor da planilha, células mescladas)
+        run: python etl/teste_gerar_lista_hospitais_oncologia.py
+      - name: Posição dos hospitais habilitados (conferência por estado, um caso por motivo)
+        run: python etl/teste_gerar_hospitais_oncologia_geo.py
+      - name: Hospitais habilitados em oncologia (dados)
+        working-directory: algoritimos
+        run: python teste_hospitais_oncologia.py
+      - name: Página Hospitais de câncer (clica em tudo)
+        run: python dashboard/teste_hospitais_cancer_tela.py
+      - name: Navegação (barra igual em todas as páginas)
+        run: python dashboard/teste_navegacao.py
+      - name: Consulta ao CNES (conferir pista contra o arquivo real, só leitura)
+        run: python etl/teste_consultar_cnes.py

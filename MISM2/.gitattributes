@@ -1,0 +1,2 @@
+# Arquivos .bat precisam de fim de linha do Windows (CRLF) para o cmd rodar direito.
+*.bat text eol=crlf

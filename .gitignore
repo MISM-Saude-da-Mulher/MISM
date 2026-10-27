@@ -1,0 +1,26 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.DS_Store
+
+# banco SQLite montado a partir do Parquet (MISM2/algoritimos/fonte_parquet.py): sempre refeito, não vai para o git
+.cache_mism/
+*.db
+*.sqlite
+*.sqlite3
+
+# saídas e dados brutos locais dos projetos
+MISM 1/saidas/
+MISM 1/dados/brutos/
+MISM 1/dados/processados/
+MISM 1/dados/cache/
+MISM2/banco/
+MISM2/dados/
+
+# dados: ficam no dataset privado do Hugging Face (ver HOSPEDAR.md), não no git
+dados_parquet/
+deploy_dados/
+.env
+MISM2/.env

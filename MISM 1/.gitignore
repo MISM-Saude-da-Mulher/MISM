@@ -1,0 +1,11 @@
+__pycache__/
+.env
+# dados de pacientes (CEP, nascimento...) e caches locais: nunca vão para o git. A pasta referencia/ (GeoJSON do mapa) vai.
+dados/brutos/
+dados/processados/
+dados/cache/
+saidas/
+venv/
+.venv
+env/
+virtualenv/
