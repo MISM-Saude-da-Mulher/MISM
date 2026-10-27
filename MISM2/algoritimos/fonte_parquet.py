@@ -34,12 +34,24 @@ def garantir_dados():
     vêm de st.secrets (segredos de nível superior viram variáveis de ambiente). Com os dados já na pasta, não faz nada."""
     if disponivel():
         return False
-    repo = os.environ.get("MISM_DATASET")
+    repo = _segredo("MISM_DATASET")
     if not repo:
         return False
     from huggingface_hub import snapshot_download
-    snapshot_download(repo_id=repo, repo_type="dataset", token=os.environ.get("HF_TOKEN") or None, local_dir=PASTA_PARQUET)
+    snapshot_download(repo_id=repo, repo_type="dataset", token=_segredo("HF_TOKEN") or None, local_dir=PASTA_PARQUET)
     return True
+
+
+def _segredo(nome):
+    """Variável de ambiente ou, se não houver, o Secret de mesmo nome do Streamlit (o token nunca fica no código)."""
+    valor = os.environ.get(nome)
+    if valor:
+        return valor
+    try:
+        import streamlit as st
+        return st.secrets.get(nome)
+    except Exception:  # sem arquivo de secrets (uso local) ou fora do Streamlit
+        return None
 
 
 # ---------- banco ----------

@@ -24,3 +24,7 @@ dados_parquet/
 deploy_dados/
 .env
 MISM2/.env
+
+# coordenadas geradas pelo Google (termos de uso restringem guardar o resultado); só o script offline de georreferenciamento usa
+resumido3_com_coordenadas_google.csv
+MISM2/banco/cep_Rio_Claro/
