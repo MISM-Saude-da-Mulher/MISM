@@ -74,6 +74,16 @@
   (2) estrutura: o autor quer o MISM como projeto único e o mapa como parte do MISM2, como o Apoio à mulher (conversa em aberto);
   (3) dois commits meus foram para `vladimirsejas/MISM2` antes da instrução de não enviar mais para lá (`b6b7d2d`, `21d7ae1`); nada mais será enviado para esse repositório.
 
+## Revisão de eficiência e união mínima (27/10/2026, a pedido do autor: manter o que era bom, só unir, medir o Parquet)
+- **União:** o MISM2 é a tela inicial (sem a barra MAPA | CENTRAL); o mapa do grupo é a página "Mapa de Rio Claro", botão ao lado do Apoio à mulher e destino da barra do MISM2.
+  Só aparece quando existe `paginas/mapa.py`: o MISM2 sozinho segue idêntico (conferido: 3 destinos, teste de navegação passa). Busca por CEP e páginas novas: NÃO feitas (o autor pediu manter como era e só unir).
+- **Medido (CSV/SQLite x Parquet):** CNES 28,8 s → 13,0 s (3,5 s só SP); banco 174 → 9,1 MB; AIH 227 → 16 MB; mapa sem ganho (0,12 x 0,15 s) e por isso passou a ler um Parquet de 34 KB (0,11 s).
+  CSVs pequenos (hospitais, análises) NÃO foram convertidos. Nada foi removido: sem `dados_parquet` tudo lê o formato de antes.
+- **Pacote de dados:** 207,6 → 54,1 MB (CNES só de SP, resultado idêntico em Rio Claro, Campinas e Piracicaba; sem o AIH completo). Dataset do Hugging Face atualizado (37 arquivos, privado).
+  Partida a frio: download 23 s + banco 8 s + CNES 3 s + mapa 0,2 s = ~36 s (antes >100 s). Nenhum arquivo passa de 27 MB (o limite de 100 MB do GitHub deixou de ser problema).
+- **Testes:** 15 testes de lógica/tela passam no site com o pacote enxuto + `testes/teste_mapa_parquet.py`. `teste_apoio_tela` e `teste_conversa_apoio_tela` falham só onde existe o `.env` com GEMINI_API_KEY (ambiental; passam na cópia limpa).
+- **Trabalhar a partir de agora em `C:\MISM_site_repo`** (cópia do repositório da organização). `C:\MISM FINAL` ficou com os arquivos antigos da raiz: não sincronize dele para lá (sobrescreveria estas edições).
+
 ## Próximo
 - Decisões pendentes do autor: (1) aceitar essa arquitetura (código no GitHub + dados em dataset privado do HF); (2) publicar ou não `cnes/tbCargaHorariaSus` (código de profissional; 110,7 MB); (3) `tbDadosProfissionalSus` fica de fora.
 - Depois: montar a pasta de deploy (só cópia dos ~208 MB, sem alterar a origem) e o passo de download.

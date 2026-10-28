@@ -16,6 +16,11 @@ DESTINOS = [
     ("hospitais", "🗺️ Hospitais de câncer", "pages/hospitais_cancer.py", "/hospitais_cancer"),
 ]
 
+# No site unificado (MISM) existe a página do mapa do grupo (paginas/mapa.py, na raiz do site): vira mais um destino.
+# O MISM2 sozinho não tem essa página e segue com os três de sempre.
+if os.path.exists(os.path.join(AQUI, "..", "..", "paginas", "mapa.py")):
+    DESTINOS.append(("mapa", "🗺️ Mapa de Rio Claro", "paginas/mapa.py", "/mapa"))
+
 
 def _ir_ao_inicio():
     st.session_state["aba"] = "Panorama"

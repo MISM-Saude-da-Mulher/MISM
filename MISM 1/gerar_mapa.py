@@ -37,14 +37,16 @@ def numero(v, default=0.0):
 
 def carregar_casos():
     """Casos classificados, todos como texto (mesmo formato do casos_por_area_usf.csv).
-    Lê do Parquet unificado (dados_parquet/aih); se ele não existir, usa o CSV de antes."""
-    if PARQUET_GEO.exists() and PARQUET_AIH.exists():
+    Lê do Parquet (dados_parquet/aih); se ele não existir, usa o CSV de antes."""
+    extras = ["DIAS_PERM", "MORTE", "DIAG_PRINC"]  # colunas do AIH de que o mapa precisa
+    if PARQUET_GEO.exists():
         print(f"Lendo casos classificados: {PARQUET_GEO.resolve()}")
-        geo = pd.read_parquet(PARQUET_GEO)
-        chave = ["tipo_cancer", "N_AIH", "ANO_CMPT", "MES_CMPT", "DT_INTER"]
-        aih = pd.read_parquet(PARQUET_AIH, columns=chave + ["DIAS_PERM", "MORTE", "DIAG_PRINC"],
-                              filters=[("MUNIC_RES", "=", "354390")])
-        df = geo.merge(aih, on=chave, how="left", validate="one_to_one")
+        df = pd.read_parquet(PARQUET_GEO)
+        if not all(c in df.columns for c in extras):  # Parquet no formato anterior: busca essas colunas no AIH completo
+            if not PARQUET_AIH.exists(): raise FileNotFoundError(f"Arquivo necessário não encontrado: {PARQUET_AIH}")
+            chave = ["tipo_cancer", "N_AIH", "ANO_CMPT", "MES_CMPT", "DT_INTER"]
+            aih = pd.read_parquet(PARQUET_AIH, columns=chave + extras, filters=[("MUNIC_RES", "=", "354390")])
+            df = df.merge(aih, on=chave, how="left", validate="one_to_one")
         df = df.astype(object).where(df.notna(), None)
         return df.map(lambda v: v if v is None else str(v))
     if not CSV_PATH.exists(): raise FileNotFoundError(f"Arquivo necessário não encontrado: {CSV_PATH}")

@@ -1,13 +1,13 @@
 # Como publicar o site (passo a passo, feito por você)
 
 Arquitetura escolhida: **código no GitHub → Streamlit Community Cloud**, **dados num dataset privado do Hugging Face**.
-O que já está pronto no projeto: `deploy_dados/` (os 38 arquivos que o site usa, 207,6 MB), `preparar_dados_deploy.py` (refaz essa pasta),
+O que já está pronto no projeto: `deploy_dados/` (37 arquivos, 54,1 MB: CNES só de SP e sem o AIH completo), `preparar_dados_deploy.py` (refaz essa pasta),
 e o passo de download em `MISM2/algoritimos/fonte_parquet.py` (`garantir_dados()`), chamado no começo do `app.py`.
 Nada abaixo foi feito por mim: exige suas contas.
 
 ## STATUS (27/10/2026)
-- **Passo 1 concluído:** dataset privado `vladimirsejas/mism-dados` criado e com os 38 arquivos (207,6 MB). Download testado de verdade com a função do site
-  (pasta vazia → 38 arquivos idênticos por MD5 → banco e CNES montam). Falta só o GitHub (passo 2) e o Streamlit (passo 3).
+- **Passo 1 concluído:** dataset privado `vladimirsejas/mism-dados` criado e com os 37 arquivos do pacote enxuto (54,1 MB). Download testado de verdade com a função do site
+  (pasta vazia → 37 arquivos idênticos por MD5 → banco, CNES e mapa funcionam; partida a frio ~36 s). Falta só o GitHub (passo 2) e o Streamlit (passo 3).
 - Nos Secrets do Streamlit use `MISM_DATASET = "vladimirsejas/mism-dados"` e um token **só de leitura** (crie outro em Settings → Access Tokens, tipo *Read*, restrito a esse dataset);
   não use o token de escrita `MISM-VSCode` na hospedagem.
 - Para atualizar os dados depois: `python preparar_dados_deploy.py` e `HfApi().upload_folder(folder_path="deploy_dados", repo_id="vladimirsejas/mism-dados", repo_type="dataset")`.

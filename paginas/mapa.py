@@ -1,6 +1,7 @@
-"""Aba MAPA: abre o mapa do MISM 1 (Rio Claro, internações por câncer em mulheres, por área de USF).
+"""Mapa de Rio Claro: o mapa do projeto do grupo (internações por câncer em mulheres, por área de USF), dentro do MISM2.
 
-O mapa continua sendo o HTML que o MISM 1 já gera (MISM 1/gerar_mapa.py); aqui ele só é embutido na página.
+O mapa continua sendo o HTML que o projeto do grupo já gera (MISM 1/gerar_mapa.py); aqui ele só é embutido na página,
+com a mesma barra de navegação das outras páginas do MISM2.
 """
 import sys
 from pathlib import Path
@@ -10,8 +11,14 @@ import streamlit.components.v1 as components
 
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ / "MISM 1"))
+sys.path.insert(0, str(RAIZ / "MISM2" / "dashboard"))
 
 import gerar_mapa  # noqa: E402
+from estilo import CSS  # noqa: E402
+from navegacao import barra_de_navegacao  # noqa: E402
+
+st.markdown(CSS, unsafe_allow_html=True)
+barra_de_navegacao("mapa", chave_inicio="mapa_inicio")
 
 # O mapa ocupa a tela toda: tira o respiro lateral e de cima da página só nesta aba.
 st.markdown(

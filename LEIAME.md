@@ -1,37 +1,40 @@
-# MISM — site único
+# MISM — um projeto só, construído sobre o MISM2
 
-Duas abas principais, no topo:
-
-| Aba | Projeto | O que abre |
-|---|---|---|
-| **MAPA** | `MISM 1/` | Mapa de Rio Claro (internações por câncer em mulheres, por área de USF), lido de `dados_parquet/aih/` |
-| **CENTRAL DE INFORMAÇÕES** | `MISM2/` | Painel + Lia, Apoio à mulher, Onde ser atendida, Hospitais de câncer (a barra interna do MISM2 segue igual) |
+O **MISM2** (painel + Lia, Apoio à mulher, Onde ser atendida, Hospitais de câncer) é a base. O **mapa de Rio Claro do projeto do grupo**
+(`KaueFLima/MISM`, pasta `MISM 1/`) entra como mais uma página dele, o botão **"Mapa de Rio Claro"**, ao lado do Apoio à mulher.
+Cada projeto continua com o seu código e a sua lógica.
 
 ## Rodar
 
 ```bash
-python -m streamlit run app.py
+python -m streamlit run app.py        # ou dê dois cliques em "Abrir MISM.bat"
 ```
 
 ## Como está montado
-- `app.py` — só navegação (`st.navigation` oculta + as duas abas). Registra as páginas do MISM2 como estão.
-- `paginas/mapa.py` — embute o HTML gerado por `MISM 1/gerar_mapa.py` (`gerar_html()`).
-- `MISM 1/gerar_mapa.py` — única mudança: lê `dados_parquet/aih/*.parquet` (se não existirem, usa o CSV de antes) e `main()` foi dividido em `gerar_html()` + gravação. O HTML gerado é idêntico ao anterior.
-- `MISM2/` — nenhum arquivo alterado.
-- `dados_parquet/` — ver `dados_parquet/LEIAME.md`.
+- `app.py`: só a navegação (a barra do Streamlit fica escondida; vale a barra do próprio MISM2). A tela inicial é a do MISM2.
+- `paginas/mapa.py`: embute o mapa do grupo (`MISM 1/gerar_mapa.py`, função `gerar_html()`) com a mesma barra do MISM2.
+- `MISM2/`: o projeto como era. Mudanças mínimas: `dashboard/navegacao.py` e `dashboard/app.py` ganham o destino "Mapa de Rio Claro"
+  **só quando existe `paginas/mapa.py`** (o MISM2 sozinho segue com os 3 destinos de sempre); `algoritimos/fonte_parquet.py` (dados em Parquet),
+  `configuracao_geografica.py`, `unidades_saude.py` e `inteligencia.carregar_tratamento` (memória) com alternativa ao formato antigo.
+- `MISM 1/`: o projeto do grupo como era. Mudança: `gerar_mapa.py` lê o Parquet (ou o CSV de antes) e `main()` virou `gerar_html()` + gravação.
+- `testes/teste_mapa_parquet.py`: confere o mapa em Parquet.
 
-## De onde vêm os dados do MISM2 (Parquet)
-- **Banco:** as 28 tabelas do `escudo_feminino.db` estão em `dados_parquet/mism2/*.parquet` + `esquema.sql`
-  (`MISM2/etl/exportar_banco_parquet.py` refaz a exportação). O painel continua com as mesmas consultas SQL: na primeira abertura
-  `MISM2/algoritimos/fonte_parquet.py` monta o SQLite a partir do Parquet (~10 s) em `.cache_mism/` e o reaproveita; se o Parquet mudar, refaz sozinho.
-  Conferido tabela a tabela contra o banco original (mesmas linhas, tipos e índices). `banco\escudo_feminino.db` não é mais lido nem tocado.
-  `perguntas_usuarios` vai só com o esquema (sem linhas). Para voltar ao banco antigo: `ESCUDO_BANCO_SQLITE=<caminho do .db>`.
-- **CNES (Onde ser atendida):** `unidades_saude.py` usa o CSV se ele existir em `MISM2/banco/cnes`; senão, `dados_parquet/cnes/`
-  (competência em `COMPETENCIA.txt`). Mesmo resultado nos dois caminhos.
-- **Hospitais habilitados:** continuam nos CSVs pequenos de `MISM2/dados_geograficos/` (já versionados no git do MISM2).
+## Parquet: onde compensa (medido) e onde não
+| Dado | Antes (CSV / SQLite) | Parquet | Resultado |
+|---|---|---|---|
+| CNES, "Onde ser atendida" | 28,8 s, 1.258 MB | 13,0 s, 182 MB; **3,5 s, ~45 MB só de SP** | mais rápido e 7–28× menor; resultado idêntico (Rio Claro, Campinas, Piracicaba) |
+| Banco do painel (SQLite) | 174 MB | 9,1 MB (+8 s uma vez para montar) | 19× menor; consultas iguais |
+| AIH (38 CSVs) | 227 MB | 16 MB | 14× menor (só arquivo morto: o site não o usa) |
+| Mapa do grupo | CSV: 0,12 s | Parquet pequeno (34 KB): **0,11 s** | sem ganho de velocidade; só uniformiza o pacote |
+| CSVs pequenos (hospitais, análises) | KB | — | **não convertidos** (sem ganho, e já estão no git) |
 
-## Pendências para hospedar (Streamlit Community Cloud)
-- `dados_parquet/` tem ~580 MB e, no CNES, só 6 tabelas são usadas pelo painel (`tbEstabelecimento`, `rlEstabServClass`, `tbClassificacaoServico`,
-  `tbServicoEspecializado`, `tbCargaHorariaSus` [110 MB, acima do limite de 100 MB por arquivo do GitHub], `tbAtividadeProfissional`).
-  Decidir o que sobe para o repositório e o que vai para um banco/armazenamento externo.
-- Dentro do site, os links internos do MISM2 (ex.: botão "Apoio à mulher") recarregam a página em vez de trocar de aba (usam o link de reserva `/apoio` que o próprio MISM2 já previa); a cidade escolhida volta ao padrão nesses saltos.
+Nada foi removido: sem a pasta `dados_parquet`, o MISM2 lê o banco e os CSVs de sempre, e o mapa lê o CSV de antes.
+
+## Dados e hospedagem
+Os dados não vão para o GitHub: ficam num dataset privado do Hugging Face (`MISM_DATASET`, `HF_TOKEN` nos Secrets) e são baixados na primeira abertura
+(**54 MB, 37 arquivos; partida a frio ~36 s**: download 23 s, banco 8 s, CNES 3 s). Gerar o pacote: `python preparar_dados_deploy.py` (`--completo` = CNES do Brasil).
+Passo a passo em `HOSPEDAR.md`; estado e pendências em `PROGRESSO.md`.
+
+## Observações
+- Dentro do site, os links internos do MISM2 (ex.: "Apoio à mulher") usam o link de reserva `/apoio` que o próprio MISM2 já previa e recarregam a página.
+- O mapa do grupo mostra dados por caso (CEP, logradouro, idade, valor): **não deixe o app acessível publicamente** até decidirem a privacidade (ver `PROGRESSO.md`).
