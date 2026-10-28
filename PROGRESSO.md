@@ -65,6 +65,15 @@
 - O repositório `vladimirsejas/MISM2` (privado, pessoal) continua separado: decidir se transfere para a organização ou se o site passa a ser a fonte única.
 - Falta: Streamlit Community Cloud (app + Secrets `MISM_DATASET` e token de LEITURA do Hugging Face).
 
+## Publicação final no GitHub da organização (27/10/2026) — commit `b9d737d` em `main`
+- Repositório privado: https://github.com/MISM-Saude-da-Mulher/MISM (404 sem login). Sem force push; histórico preservado (6 commits). Cópia de trabalho: `C:\MISM_site_repo`.
+- Corrigido antes de enviar: `resumido3_com_coordenadas_google.csv` saiu do controle de versão (o site não o usa; termos do Google) — **continua no histórico do commit `4c22bf4`**;
+  voltaram `MISM2/README.md` e os 3 CSVs de `analises/` (o filtro anterior os tinha excluído); saíram arquivos soltos (`explicador_ia.py`, `app.py.backup`, `resultado_testes_notebook.txt`, `analises/*.txt`).
+- Testado em ambiente limpo (venv novo só com `requirements.txt`, clone novo, dados baixados do Hugging Face): MAPA e CENTRAL abrem; 14 testes passam. NÃO rodado nesse ambiente: `teste_painel.py` completo (precisa de >2 GB de RAM, ~20 min; passou antes com 117 OK).
+- Pendências levantadas: (1) o MAPA mostra dados por caso (CEP, logradouro, idade, valor) no HTML da página: não publicar o app em acesso público antes de decidir (ver CLAUDE.md, condições do mapa);
+  (2) estrutura: o autor quer o MISM como projeto único e o mapa como parte do MISM2, como o Apoio à mulher (conversa em aberto);
+  (3) dois commits meus foram para `vladimirsejas/MISM2` antes da instrução de não enviar mais para lá (`b6b7d2d`, `21d7ae1`); nada mais será enviado para esse repositório.
+
 ## Próximo
 - Decisões pendentes do autor: (1) aceitar essa arquitetura (código no GitHub + dados em dataset privado do HF); (2) publicar ou não `cnes/tbCargaHorariaSus` (código de profissional; 110,7 MB); (3) `tbDadosProfissionalSus` fica de fora.
 - Depois: montar a pasta de deploy (só cópia dos ~208 MB, sem alterar a origem) e o passo de download.
