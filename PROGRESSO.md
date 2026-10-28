@@ -93,3 +93,6 @@
 ## Próximo
 - Decisões pendentes do autor: (1) aceitar essa arquitetura (código no GitHub + dados em dataset privado do HF); (2) publicar ou não `cnes/tbCargaHorariaSus` (código de profissional; 110,7 MB); (3) `tbDadosProfissionalSus` fica de fora.
 - Depois: montar a pasta de deploy (só cópia dos ~208 MB, sem alterar a origem) e o passo de download.
+
+## 28/10/2026 - Identidade visual unica
+Todas as paginas (Panorama e abas, Apoio, Onde ser atendida, Hospitais de cancer, Mapa de Rio Claro) abrem com a linha de marca "MISM . ..." e a mesma barra de navegacao; a Lia e o guia comum. Mapa passou a ter a linha de marca e o mesmo respiro de topo. Etapa fechada; proxima: etapa dois.

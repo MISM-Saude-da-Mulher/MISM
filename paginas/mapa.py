@@ -18,12 +18,13 @@ from estilo import CSS  # noqa: E402
 from navegacao import barra_de_navegacao  # noqa: E402
 
 st.markdown(CSS, unsafe_allow_html=True)
+st.markdown('<div class="escudo-marca">MISM · Mapa de Rio Claro</div>', unsafe_allow_html=True)
 barra_de_navegacao("mapa", chave_inicio="mapa_inicio")
 
-# O mapa ocupa a tela toda: tira o respiro lateral e de cima da página só nesta aba.
+# O mapa ocupa a largura toda: tira só o respiro lateral desta aba (o topo segue igual ao das outras páginas).
 st.markdown(
     """<style>
-    .block-container { padding-top: 3.5rem !important; padding-left: 1rem !important; padding-right: 1rem !important; }
+    .block-container { padding-left: 1rem !important; padding-right: 1rem !important; }
     iframe { border: 0; border-radius: 12px; }
     </style>""",
     unsafe_allow_html=True,
