@@ -97,3 +97,8 @@
 ## 28/10/2026 - Identidade visual unica
 Todas as paginas (Panorama e abas, Apoio, Onde ser atendida, Hospitais de cancer, Mapa de Rio Claro) abrem com a linha de marca "MISM . ..." e a mesma barra de navegacao; a Lia e o guia comum. Mapa passou a ter a linha de marca e o mesmo respiro de topo. Etapa fechada; proxima: etapa dois.
 - Lia (28/10/2026): novo assunto "mapa_rio_claro" (onde fica o mapa, areas de USF) com texto fixo e link para a pagina do mapa; a Lia NAO foi levada para outras paginas (decisao do autor: Lia so onde ja estava). Teste: MISM2/algoritimos/teste_mapa_lia.py.
+
+## 28/10/2026 - Decisoes do CEP (o autor delegou; fontes publicas, sem impedimento)
+- **Busca por CEP: feita.** No mapa, "Qual e a minha area de USF?": o CEP vai as APIs publicas (AwesomeAPI primeiro; a BrasilAPI devolve o centro da cidade para qualquer CEP e e recusada), cai no poligono da area do grupo e lista as 3 UBS mais perto (linha reta). Nada e guardado. Avisos na tela: posicao da rua, nao da casa; area do grupo, nao limite oficial; UBS mais perto nao e a de referencia. Codigo `MISM 1/consulta_cep.py`, teste `testes/teste_consulta_cep.py`.
+- **Tabela de CEP do Google:** continua fora do git (`.gitignore`) e nao e usada pelo site. Fica no historico do repositorio PRIVADO (commit 4c22bf4); nao reescrevo historico (regra: sem force push, nada apagado). Se um dia o repositorio for aberto, so entao reavaliar. Alternativa publica para o futuro: CNEFE do IBGE (enderecos com coordenada).
+- **Pasta/creditos:** `MISM 1/` mantida como esta; creditos no FONTES_DOS_DADOS.md (Kaue, brendolalves, Gabriel-nascimento31).

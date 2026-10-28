@@ -16,7 +16,7 @@ pode refazer o caminho com as mesmas fontes.
 | **Hospitais habilitados em oncologia** (361 no Brasil, 88 em SP) | planilha publicada pelo **Ministério da Saúde** (habilitação 2023) | planilha pública, tratada em `etl/gerar_lista_hospitais_oncologia.py` | Hospitais de câncer |
 | **Catálogo de serviços de Rio Claro e conteúdo do Apoio à mulher** | páginas oficiais (prefeitura, Estado de SP, INCA, Ministério) | conferido item a item, com a **fonte e a data de conferência em cada cartão** | Apoio à mulher, Onde ser atendida |
 | **Áreas de USF e limite de Rio Claro** | arquivos do **projeto territorial do grupo** (`KaueFLima/MISM`) | recebidos do projeto do grupo (a origem dos polígonos ainda não está registrada nos arquivos) | mapa de Rio Claro |
-| **CEP para localização** | geocodificação do grupo: APIs gratuitas (AwesomeAPI, BrasilAPI) e uma tabela local de CEPs com coordenadas, que inclui coordenadas obtidas do Google Maps | script `georreferenciar_dados.py` do grupo | mapa de Rio Claro |
+| **CEP para localização** | consulta na hora às APIs públicas gratuitas de CEP (AwesomeAPI; a BrasilAPI só devolve o centro da cidade e é recusada); o MISM não guarda o CEP nem usa tabela de coordenadas do Google | `MISM 1/consulta_cep.py` | consulta "Qual é a minha área de USF?" no mapa de Rio Claro |
 
 ## O que o MISM faz com esses dados
 - **Só descreve.** Mostra o que o SUS registrou: internações, óbitos na internação, valores registrados, onde há serviço. Não diagnostica, não indica tratamento e não
