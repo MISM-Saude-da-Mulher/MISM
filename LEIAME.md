@@ -4,6 +4,8 @@ O **MISM2** (painel + Lia, Apoio à mulher, Onde ser atendida, Hospitais de cân
 (`KaueFLima/MISM`, pasta `MISM 1/`) entra como mais uma página dele, o botão **"Mapa de Rio Claro"**, ao lado do Apoio à mulher.
 Cada projeto continua com o seu código e a sua lógica.
 
+**Origem dos dados:** tudo vem de bases públicas (DATASUS, CNES, IBGE, Ministério da Saúde), baixadas pela própria equipe. Fontes e como refazer: [`FONTES_DOS_DADOS.md`](FONTES_DOS_DADOS.md).
+
 ## Rodar
 
 ```bash

@@ -31,8 +31,11 @@ st.markdown(
 
 
 @st.cache_data(show_spinner="Montando o mapa…")
-def html_do_mapa():
-    return gerar_mapa.gerar_html()
+def html_do_mapa(por_caso):
+    return gerar_mapa.gerar_html(por_caso=por_caso)
 
 
-components.html(html_do_mapa(), height=820, scrolling=False)
+# Os dados são do SIH/SUS (DATASUS, base pública): as duas visões estão a um clique. Padrão: totais por área de USF.
+visao = st.radio("Visão do mapa", ["Totais por área de USF", "Casos detalhados (SIH/SUS, base pública)"], horizontal=True,
+                 key="mapa_visao", label_visibility="collapsed")
+components.html(html_do_mapa(visao.startswith("Casos")), height=820, scrolling=False)

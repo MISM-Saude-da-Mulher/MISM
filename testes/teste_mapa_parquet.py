@@ -41,7 +41,7 @@ checar("gera o mapa sem o AIH completo", 0 < len(registros) <= len(geo))
 checar("nenhum registro traz CEP, logradouro ou CID", not any(r["cep"] or r["logradouro"] or r["cid"] for r in registros))
 checar("as coordenadas são só os centros das áreas (poucos pontos, não um por caso)",
        len({(r["lat"], r["lng"]) for r in registros}) <= 25)
-checar("o mapa avisa que grupos com menos de 5 casos não aparecem", "Por privacidade" in html and "menos de 5" in html)
+checar("o mapa explica a regra de pequenos números (grupos com menos de 5 casos são somados)", "Totais por área de USF" in html and "menos de 5" in html)
 checar("não sobrou texto de 'coordenada' nem a linha de CEP no popup", "por coordenada" not in html and "CEP(s)" not in html)
 checar("cada registro ainda tem área, doença e ano para os filtros do mapa",
        all(r["area_usf"] and r["doenca"] and "ano" in r for r in registros))
@@ -80,7 +80,11 @@ checar("o ponto de cada área é o centro dela", {(r["lat"], r["lng"]) for r in 
 os.environ["MISM_MAPA_POR_CASO"] = "1"
 por_caso = registros_do_html(gerar_mapa.gerar_html())
 os.environ.pop("MISM_MAPA_POR_CASO", None)
-checar("com MISM_MAPA_POR_CASO=1 o mapa volta a ser caso a caso (uso interno)", len(por_caso) == len(geo) and any(r["cep"] for r in por_caso))
+checar("com MISM_MAPA_POR_CASO=1 o mapa volta a ser caso a caso", len(por_caso) == len(geo) and any(r["cep"] for r in por_caso))
+html_detalhado = gerar_mapa.gerar_html(por_caso=True)          # é o que a opção "Casos detalhados" da página do mapa usa
+detalhado = registros_do_html(html_detalhado)
+checar("a opção 'Casos detalhados' mostra todas as internações públicas do SIH/SUS", len(detalhado) == len(geo) and "base pública do DATASUS" in html_detalhado)
+checar("sem a opção, o padrão continua sendo os totais por área", len(registros_do_html(gerar_mapa.gerar_html(por_caso=False))) == len(registros))
 
 if falhas:
     print(f"\n{len(falhas)} falha(s).")

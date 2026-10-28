@@ -136,8 +136,10 @@ def agregar_por_area(records, usf_geojson, municipio_geojson, minimo=MINIMO_CASO
     return saida, ocultos, sorted(a for a in areas_com_oculto if a not in com_dados)
 
 
-def gerar_html():
-    """Monta o HTML completo do mapa e o devolve como texto (usado pelo site e por main())."""
+def gerar_html(por_caso=None):
+    """Monta o HTML completo do mapa e o devolve como texto (usado pelo site e por main()).
+    por_caso=False (padrão): totais por área de USF; True: cada internação do SIH/SUS (base pública do DATASUS).
+    Sem o argumento, vale a variável MISM_MAPA_POR_CASO=1."""
     for caminho in (USF_GEOJSON_PATH, MUNICIPIO_GEOJSON_PATH):
         if not caminho.exists(): raise FileNotFoundError(f"Arquivo necessário não encontrado: {caminho}")
     df = carregar_casos()
@@ -172,13 +174,16 @@ def gerar_html():
             "cid": texto(row.get("DIAG_PRINC", "")), "cid_desc": "Neoplasia maligna",
             "doenca": texto(row.get("DOENCA", "Não informado")),
         })
+    if por_caso is None:
+        por_caso = os.environ.get("MISM_MAPA_POR_CASO") == "1"
     n_ocultos, areas_ocultas = 0, []
-    if os.environ.get("MISM_MAPA_POR_CASO") != "1":
+    if por_caso:
+        nota_privacidade = "Casos detalhados: cada ponto é uma internação do SIH/SUS (base pública do DATASUS)."
+    else:
         records, n_ocultos, areas_ocultas = agregar_por_area(records, usf_geojson, municipio_geojson)
-    nota_privacidade = "" if os.environ.get("MISM_MAPA_POR_CASO") == "1" else (
-        f"Por privacidade, o mapa mostra totais por área de USF: grupos com menos de {MINIMO_CASOS} casos não aparecem "
-        f"(ao filtrar por ano ou faixa etária, os totais podem ficar abaixo do real)"
-        + (f" ({n_ocultos} internações ficam fora dos totais)." if n_ocultos else "."))
+        nota_privacidade = (f"Totais por área de USF. Grupos com menos de {MINIMO_CASOS} casos são somados (regra estatística de pequenos números); "
+                            f"ao filtrar por ano ou faixa etária, os totais podem ficar abaixo do real"
+                            + (f" ({n_ocultos} internações ficam fora dos totais)." if n_ocultos else "."))
     json_areas_ocultas = json.dumps(areas_ocultas, ensure_ascii=False).replace("</", "<\\/")
     total_internacoes = len(records)
     idade_media = round(sum(r["idade"] for r in records if r["idade"] > 0) / max(1, sum(1 for r in records if r["idade"] > 0)), 1)
