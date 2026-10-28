@@ -3,6 +3,7 @@ Usa casos já classificados em casos_por_area_usf.csv e incorpora o GeoJSON USF
 no HTML gerado, sem dependência de fetch externo para os polígonos.
 """
 import json
+import os
 from pathlib import Path
 import pandas as pd
 
@@ -53,6 +54,88 @@ def carregar_casos():
     print(f"Lendo casos classificados: {CSV_PATH.resolve()}")
     return pd.read_csv(CSV_PATH, sep=";", dtype=str, low_memory=False)
 
+# ---------------------------------------------------------------------------------------------------------------------
+# Privacidade (alternativa A, decidida em 28/10/2026): o mapa mostra TOTAIS por área de USF, não os casos um a um.
+# Cada grupo (área x doença x ano x faixa etária) vira pontos no centro da própria área, sem CEP, rua nem coordenada de
+# ninguém. Grupo com menos de MINIMO_CASOS casos é somado ao "restante" da área (mesma faixa); se ainda assim fica abaixo
+# do mínimo, não aparece. Para voltar ao mapa caso a caso (uso interno do grupo): MISM_MAPA_POR_CASO=1.
+# ---------------------------------------------------------------------------------------------------------------------
+MINIMO_CASOS = 5
+
+
+def _faixa_idade(idade):
+    if idade < 40: return "ate40"
+    if idade < 50: return "40a49"
+    if idade < 60: return "50a59"
+    if idade < 70: return "60a69"
+    return "70mais"
+
+
+def _centroide_anel(anel):
+    a = cx = cy = 0.0
+    for p0, p1 in zip(anel, anel[1:] + anel[:1]):
+        cr = p0[0] * p1[1] - p1[0] * p0[1]
+        a += cr; cx += (p0[0] + p1[0]) * cr; cy += (p0[1] + p1[1]) * cr
+    if abs(a) < 1e-12:
+        return sum(p[0] for p in anel) / len(anel), sum(p[1] for p in anel) / len(anel)
+    a *= 0.5
+    return cx / (6 * a), cy / (6 * a)
+
+
+def _centros(usf_geojson, municipio_geojson):
+    """(lat, lon) do centro de cada área de USF pelo nome, e do município (para casos sem área)."""
+    centros, cidade = {}, None
+    for f in usf_geojson.get("features", []):
+        g = f.get("geometry") or {}
+        nome = (f.get("properties") or {}).get("nome")
+        if nome and g.get("type") == "Polygon" and g.get("coordinates"):
+            lon, lat = _centroide_anel(g["coordinates"][0]); centros[nome] = (lat, lon)
+    for f in municipio_geojson.get("features", []):
+        g = f.get("geometry") or {}
+        anel = (g.get("coordinates") or [[]])[0] if g.get("type") == "Polygon" else ((g.get("coordinates") or [[[]]])[0][0] if g.get("type") == "MultiPolygon" else [])
+        if anel:
+            lon, lat = _centroide_anel(anel); cidade = (lat, lon); break
+    return centros, cidade
+
+
+def agregar_por_area(records, usf_geojson, municipio_geojson, minimo=MINIMO_CASOS):
+    """Troca os casos individuais por grupos somados. Devolve (registros_agregados, n_ocultos, areas_sem_nada_visivel).
+    Os registros agregados têm o mesmo formato dos de antes (o mapa não muda), mas sem CEP, logradouro, CID nem coordenada própria."""
+    centros, cidade = _centros(usf_geojson, municipio_geojson)
+    grupos, pequenos = {}, {}
+    for r in records:
+        grupos.setdefault((r["area_usf"], r["doenca"], r["ano"], _faixa_idade(r["idade"])), []).append(r)
+    saida, ocultos, areas_com_oculto, por_doenca = [], 0, set(), {}
+
+    def emitir(area, doenca, ano, itens, restante=False):
+        centro = centros.get(area) or cidade
+        if centro is None:
+            return False
+        n = len(itens)
+        idade, valor = sum(i["idade"] for i in itens) / n, sum(i["valor"] for i in itens) / n
+        dias, mortes = round(sum(i["dias"] for i in itens) / n), sum(1 for i in itens if i["morte"])
+        for k in range(n):
+            saida.append({"cep": "", "bairro": area, "area_usf": area, "logradouro": "", "lat": round(centro[0], 6), "lng": round(centro[1], 6),
+                          "idade": round(idade, 2), "ano": ano, "valor": valor, "dias": dias, "morte": k < mortes,
+                          "cid": "", "cid_desc": "Neoplasia maligna", "doenca": doenca, "restante": restante})
+        return True
+
+    for (area, doenca, ano, faixa), itens in sorted(grupos.items()):
+        if len(itens) >= minimo and emitir(area, doenca, ano, itens):
+            continue
+        pequenos.setdefault((area, doenca), []).extend(itens)          # 2º nível: soma os anos e faixas da mesma doença
+    for (area, doenca), itens in sorted(pequenos.items()):
+        if len(itens) >= minimo and emitir(area, doenca, "", itens, restante=True):
+            continue
+        por_doenca.setdefault(area, []).extend(itens)                  # 3º nível: soma as doenças da mesma área
+    for area, itens in sorted(por_doenca.items()):
+        if len(itens) >= minimo and emitir(area, "Outros (poucos casos)", "", itens, restante=True):
+            continue
+        ocultos += len(itens); areas_com_oculto.add(area)
+    com_dados = {r["area_usf"] for r in saida}
+    return saida, ocultos, sorted(a for a in areas_com_oculto if a not in com_dados)
+
+
 def gerar_html():
     """Monta o HTML completo do mapa e o devolve como texto (usado pelo site e por main())."""
     for caminho in (USF_GEOJSON_PATH, MUNICIPIO_GEOJSON_PATH):
@@ -89,6 +172,14 @@ def gerar_html():
             "cid": texto(row.get("DIAG_PRINC", "")), "cid_desc": "Neoplasia maligna",
             "doenca": texto(row.get("DOENCA", "Não informado")),
         })
+    n_ocultos, areas_ocultas = 0, []
+    if os.environ.get("MISM_MAPA_POR_CASO") != "1":
+        records, n_ocultos, areas_ocultas = agregar_por_area(records, usf_geojson, municipio_geojson)
+    nota_privacidade = "" if os.environ.get("MISM_MAPA_POR_CASO") == "1" else (
+        f"Por privacidade, o mapa mostra totais por área de USF: grupos com menos de {MINIMO_CASOS} casos não aparecem "
+        f"(ao filtrar por ano ou faixa etária, os totais podem ficar abaixo do real)"
+        + (f" ({n_ocultos} internações ficam fora dos totais)." if n_ocultos else "."))
+    json_areas_ocultas = json.dumps(areas_ocultas, ensure_ascii=False).replace("</", "<\\/")
     total_internacoes = len(records)
     idade_media = round(sum(r["idade"] for r in records if r["idade"] > 0) / max(1, sum(1 for r in records if r["idade"] > 0)), 1)
     custo_total = sum(r["valor"] for r in records)
@@ -749,6 +840,7 @@ def gerar_html():
             </div>
             <h1>Rio Claro (SP)</h1>
             <p>Saúde da Mulher: Internações Oncologicas Multidoenças (2021 a 2025).</p>
+            <p style="font-size:11px;color:var(--text-muted);margin-top:6px;">{nota_privacidade}</p>
         </div>
 
         <div class="sidebar-content">
@@ -830,7 +922,7 @@ def gerar_html():
                 <div class="layer-toggle-row">
                     <div class="layer-info">
                         <i class="ph ph-circles-three"></i>
-                        <span>Casos agrupados por coordenada</span>
+                        <span>Casos agrupados por área</span>
                     </div>
                     <label class="switch">
                         <input type="checkbox" id="toggleClusters" checked onchange="atualizarCamadas()">
@@ -884,6 +976,7 @@ def gerar_html():
 
     <script>
         const rawData = {json_records};
+        const areasOcultas = {json_areas_ocultas};
         const municipioGeoJSON = {json_municipio_geojson};
         const areasUSFGeoJSON = {json_usf_geojson};
 
@@ -939,6 +1032,7 @@ def gerar_html():
         function atendeFiltros(item) {{
             if (filtroDoencaAtivo !== 'todas' && item.doenca !== filtroDoencaAtivo) return false;
             if (filtroAnoAtivo !== 'todos' && item.ano !== filtroAnoAtivo) return false;
+            if (item.restante && filtroFaixaAtiva !== 'todas') return false;   // junta várias faixas etárias: só entra sem filtro de faixa
             const id = item.idade;
             if (filtroFaixaAtiva === 'ate40' && id >= 40) return false;
             if (filtroFaixaAtiva === '40a49' && (id < 40 || id > 49)) return false;
@@ -1005,7 +1099,7 @@ def gerar_html():
             const total=dados.length || 1;
             areasLayer=L.geoJSON(areasUSFGeoJSON, {{
                 style: feature => {{ const n=stats[nomeArea(feature)]?.casos || 0; return {{color:n?'#ffffff':'#64748b',weight:n?1.5:0.8,opacity:n?0.85:0.4,fillColor:getCorPorCasos(n),fillOpacity:n?0.55:0.12}}; }},
-                onEachFeature: (feature,layer) => {{ const nome=nomeArea(feature); layer.bindTooltip('<strong>'+escapar(nome)+'</strong><br><span style="color:#fb7185">'+(stats[nome]?.casos||0)+' casos</span>',{{sticky:true}}); layer.bindPopup(popupArea(nome,stats[nome],total)); layer.on({{mouseover:e=>e.target.setStyle({{weight:3,color:'#fb7185',fillOpacity:0.82}}),mouseout:e=>areasLayer.resetStyle(e.target)}}); }}
+                onEachFeature: (feature,layer) => {{ const nome=nomeArea(feature); layer.bindTooltip('<strong>'+escapar(nome)+'</strong><br><span style="color:#fb7185">'+(stats[nome]?.casos ? stats[nome].casos+' casos' : (areasOcultas.includes(nome) ? 'menos de 5 casos' : '0 casos'))+'</span>',{{sticky:true}}); layer.bindPopup(popupArea(nome,stats[nome],total)); layer.on({{mouseover:e=>e.target.setStyle({{weight:3,color:'#fb7185',fillOpacity:0.82}}),mouseout:e=>areasLayer.resetStyle(e.target)}}); }}
             }});
             const gruposCoord=new Map();
             dados.forEach(d=>{{const key=d.lat.toFixed(6)+','+d.lng.toFixed(6);if(!gruposCoord.has(key))gruposCoord.set(key,[]);gruposCoord.get(key).push(d);}});
@@ -1016,7 +1110,7 @@ def gerar_html():
                 const marker=L.circleMarker([first.lat,first.lng],{{radius:Math.min(7+Math.sqrt(n)*3,22),fillColor:getCorPorCasos(n),color:'#ffffff',weight:2,opacity:0.9,fillOpacity:0.85}});
                 marker.bindTooltip(n+' '+(n===1?'caso':'casos')+' · '+g.length+' registros',{{direction:'top'}});
                 const doencas=[...new Set(g.map(x=>x.doenca))].join(', '), ceps=[...new Set(g.map(x=>x.cep).filter(Boolean))].join(', ');
-                marker.bindPopup('<div class="popup-card"><div class="popup-header"><span class="popup-tag">Casos agrupados por coordenada</span><div class="popup-title">'+n+' '+(n===1?'caso':'casos')+'</div></div><div class="popup-row"><span class="popup-label">Área USF:</span><span class="popup-value">'+escapar(areas.join(', ')||'Não classificado')+'</span></div><div class="popup-row"><span class="popup-label">CEP(s):</span><span class="popup-value">'+escapar(ceps||'Não informado')+'</span></div><div class="popup-row"><span class="popup-label">Doença(s):</span><span class="popup-value">'+escapar(doencas)+'</span></div></div>');
+                marker.bindPopup('<div class="popup-card"><div class="popup-header"><span class="popup-tag">Casos agrupados por área</span><div class="popup-title">'+n+' '+(n===1?'caso':'casos')+'</div></div><div class="popup-row"><span class="popup-label">Área USF:</span><span class="popup-value">'+escapar(areas.join(', ')||'Não classificado')+'</span></div><div class="popup-row"><span class="popup-label">Doença(s):</span><span class="popup-value">'+escapar(doencas)+'</span></div></div>');
                 clusterGroup.addLayer(marker);
             }});
             const ranking=Object.entries(stats).sort((a,b)=>b[1].casos-a[1].casos).map(([n,s])=>[n,s.casos]);
