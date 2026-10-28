@@ -1,0 +1,15 @@
+cancer;territorio;arquivo_origem;registros;ano_min;ano_max;anos_distintos;sexo_nao_feminino;fora_periodo;fora_sp_municipio;diagnostico_fora_esperado;municipios_residencia_distintos
+Colo do útero;Rio Claro;cancer_colo_utero_mulheres_rio_claro_2013_2025.csv;113;2013;2025;13;0;0;0;0;1
+Colo do útero;São Paulo;cancer_colo_utero_mulheres_sp_2013_2025.csv;42536;2013;2025;13;0;0;0;0;608
+Colorretal;Rio Claro;cancer_colorretal_mulheres_rio_claro_2013_2025(2).csv;380;2013;2025;13;0;0;0;0;1
+Colorretal;São Paulo;cancer_colorretal_mulheres_sp_2013_2025_corrigido.csv;91341;2013;2025;13;0;0;0;0;640
+Mama;Rio Claro;cancer_mama_mulheres_rio_claro_2013_2025(4).csv;670;2013;2025;13;0;0;0;0;1
+Mama;São Paulo;cancer_mama_mulheres_sp_2013_2025(5).csv;177096;2013;2025;13;0;0;0;0;644
+Ovário;Rio Claro;cancer_ovario_mulheres_rio_claro_2013_2025(1).csv;129;2013;2025;13;0;0;0;0;1
+Ovário;São Paulo;cancer_ovario_mulheres_sp_2013_2025.csv;27383;2013;2025;13;0;0;0;0;604
+Pele não melanoma;Rio Claro;cancer_pele_nao_melanoma_mulheres_rio_claro_2013_2025.csv;236;2013;2025;13;0;0;0;0;1
+Pele não melanoma;São Paulo;cancer_pele_nao_melanoma_mulheres_sp_2013_2025(1).csv;57567;2013;2025;13;0;0;0;0;643
+Pulmão;Rio Claro;cancer_pulmao_mulheres_rio_claro_2013_2025.csv;109;2013;2025;13;0;0;0;0;1
+Pulmão;São Paulo;cancer_pulmao_mulheres_sp_2013_2025.csv;27582;2013;2025;13;0;0;0;0;605
+Tireoide;Rio Claro;cancer_tireoide_mulheres_rio_claro_2013_2025.csv;31;2013;2025;10;0;0;0;0;1
+Tireoide;São Paulo;cancer_tireoide_mulheres_sp_2013_2025.csv;22844;2013;2025;13;0;0;0;0;615
