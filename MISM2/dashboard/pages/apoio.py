@@ -34,7 +34,7 @@ from lia_rosto import img as rosto_lia  # noqa: E402
 # Streamlit: chave do widget atrelada ao valor (ver app.py).
 # ============================================================
 
-st.set_page_config(page_title="MISM2 · Apoio à mulher", page_icon="E", layout="wide",
+st.set_page_config(page_title="MISM · Apoio à mulher", page_icon="E", layout="wide",
                    initial_sidebar_state="collapsed")
 st.markdown(CSS, unsafe_allow_html=True)
 st.markdown("""
@@ -594,7 +594,7 @@ def porta_ajuda():
 
 col_titulo, col_link = st.columns([2.2, 1])
 with col_titulo:
-    st.markdown('<div class="escudo-marca">MISM2 · Apoio à mulher</div>', unsafe_allow_html=True)
+    st.markdown('<div class="escudo-marca">MISM · Apoio à mulher</div>', unsafe_allow_html=True)
     st.markdown('<div class="escudo-titulo">Encontre um caminho</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="escudo-sub">Onde a mulher de {apoio.CIDADE} encontra prevenção, diagnóstico, '
                 'tratamento e proteção, com as páginas oficiais do Estado de SP, da região e da cidade. '
@@ -725,7 +725,7 @@ def desenhar_lia_apoio():
     with c_fala:
         with balao("centro"):
             if boas_vindas_aberta:
-                st.markdown('<div class="lia-nome">Lia <span>· pesquisadora do MISM2</span></div>'
+                st.markdown('<div class="lia-nome">Lia <span>· pesquisadora do MISM</span></div>'
                             '<div class="lia-fala-grande">Vamos por partes. Escolha o que mais se parece com a sua situação; '
                             'você pode voltar e mudar de caminho.</div>', unsafe_allow_html=True)
                 st.markdown("**Por onde você quer começar?**")
@@ -745,7 +745,7 @@ def desenhar_lia_apoio():
                           on_click=lambda: st.session_state.update(ap_boas_vindas_fechada=True))
             else:
                 cab, rec = st.columns([6, 1.4], vertical_alignment="center")
-                cab.markdown('<div class="lia-nome">Lia <span>· pesquisadora do MISM2</span></div>', unsafe_allow_html=True)
+                cab.markdown('<div class="lia-nome">Lia <span>· pesquisadora do MISM</span></div>', unsafe_allow_html=True)
                 rec.button("Recolher a Lia", key="caixa_lia_recolher", on_click=definir, args=("lia_recolhida", True),
                            width="stretch")
                 if getattr(atual, "pergunta", None):
@@ -970,4 +970,4 @@ if aba == apoio.LAMINAS["sobre"]:
     st.dataframe(tabela, width="stretch", hide_index=True)
 
 
-st.caption("MISM2 · Apoio à mulher · guia de onde procurar; confirme sempre na unidade de saúde.")
+st.caption("MISM · Apoio à mulher · guia de onde procurar; confirme sempre na unidade de saúde.")

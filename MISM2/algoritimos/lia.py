@@ -164,7 +164,7 @@ def _nota_2025(ctx):
 
 def saudacao(ctx):
     return Resposta(
-        fala=(f"Olá, eu sou a **Lia**, pesquisadora do MISM2. Vamos olhar juntas os dados de "
+        fala=(f"Olá, eu sou a **Lia**, pesquisadora do MISM. Vamos olhar juntas os dados de "
               f"câncer em mulheres de **{ctx.cidade}**? O que você quer descobrir?"),
         expressao="acolhedora",
         botoes=[(r, caminho(c)) for r, c in CAMINHOS],
@@ -640,6 +640,25 @@ def alcance(ctx, cancer=None):
                     botoes=[("O que mais aparece?", caminho("mais_aparece")), ("Os dados estão completos?", caminho("completude")),
                             ("Como esses dados funcionam?", caminho("metodo"))],
                     destino={"aba": "Método"}, numeros=frases[:2])
+
+
+# Autor, 28/10/2026: a Lia não sabia dizer para que serve o MISM (o nome novo do projeto). Texto fixo: sem IA, sem número, sem causa.
+SOBRE_O_MISM = (
+    "O MISM é um painel de informação sobre a saúde da mulher, com foco em câncer. Ele junta dados públicos do SUS com orientação de apoio, "
+    "para Rio Claro e comparando com o Estado de São Paulo.\n\n"
+    "Eu, a Lia, ajudo em três coisas: mostrar o que os dados dizem sobre os cânceres que levam mulheres ao hospital (quantas internações e "
+    "como mudaram ao longo dos anos); mostrar onde ser atendida (unidades de saúde, hospitais de câncer e os mais próximos da sua cidade); e "
+    "orientar sobre o apoio à mulher (exames, direitos, proteção contra a violência e telefones de emergência: 190, 192 e 180).\n\n"
+    "Os limites: não faço diagnóstico, não indico tratamento, não explico causas, e internação não é caso novo nem incidência."
+)
+
+
+def sobre_mism(ctx, cancer=None):
+    """Para que serve o MISM e até onde ele alcança: a função (texto fixo) e, se o banco puder ser lido, o que ele guarda."""
+    base = alcance(ctx)
+    tem_banco = bool(getattr(ctx, "alcance", None))
+    fala = SOBRE_O_MISM + (("\n\nAté onde vão os dados:\n\n" + base.fala) if tem_banco else "")
+    return Resposta(fala=fala, expressao="acolhedora", botoes=base.botoes, destino=base.destino, numeros=base.numeros if tem_banco else [])
 
 
 def polos(ctx, cancer=None):

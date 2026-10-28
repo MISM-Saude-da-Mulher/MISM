@@ -19,7 +19,7 @@ def simbolo(tamanho=46):
         else:
             pontos.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="2.7" fill="none" stroke="#5b2a55" stroke-width="1.3"/>')
     return (f'<svg class="mism-simbolo" width="{tamanho}" height="{tamanho}" viewBox="0 0 64 64" role="img" '
-            f'aria-label="MISM2">{"".join(pontos)}'
+            f'aria-label="MISM">{"".join(pontos)}'
             '<path d="M19 40 C25 38 27 31 32 31 S39 29 45 22" fill="none" stroke="#b79bd1" '
             'stroke-width="2.6" stroke-linecap="round"/>'
             '<circle cx="45" cy="22" r="2.6" fill="#5b2a55"/></svg>')

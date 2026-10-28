@@ -114,7 +114,7 @@ from inteligencia import (
 
 
 st.set_page_config(
-    page_title="MISM2",
+    page_title="MISM",
     page_icon="E",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -394,7 +394,7 @@ serie = serie_municipio(ORIGEM)
 resumo = resumo_doencas(serie) if not serie.empty else pd.DataFrame()
 
 with col_titulo:
-    st.markdown(f'<div class="mism-marca"><div class="escudo-marca">MISM2'
+    st.markdown(f'<div class="mism-marca"><div class="escudo-marca">MISM'
                 f'<span> · saúde da mulher</span></div></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="escudo-titulo">Câncer em mulheres de <em>{html.escape(nome_cidade)}</em></div>',
                 unsafe_allow_html=True)
@@ -745,7 +745,7 @@ def desenhar_lia():
         with balao("centro"):
             if boas_vindas_aberta:
                 boas_vindas = lia_responder(ctx_lia, INICIO)
-                st.markdown(f'<div class="lia-nome">Lia <span>· pesquisadora do MISM2</span></div>'
+                st.markdown(f'<div class="lia-nome">Lia <span>· pesquisadora do MISM</span></div>'
                             f'<div class="lia-fala-grande">{boas_vindas.fala.replace("**", "")}</div>', unsafe_allow_html=True)
                 principais = {"mais_aparece", "aumentando", "atencao", "futuro"}
                 colunas = st.columns(2)
@@ -755,7 +755,7 @@ def desenhar_lia():
                           on_click=lambda: st.session_state.update(lia_fechada=True))
             else:
                 cab, rec = st.columns([6, 1.4], vertical_alignment="center")
-                cab.markdown('<div class="lia-nome">Lia <span>· pesquisadora do MISM2</span></div>', unsafe_allow_html=True)
+                cab.markdown('<div class="lia-nome">Lia <span>· pesquisadora do MISM</span></div>', unsafe_allow_html=True)
                 rec.button("Recolher a Lia", key="caixa_lia_recolher", on_click=definir, args=("lia_recolhida", True),
                            width="stretch")
                 if getattr(atual, "pergunta", None):

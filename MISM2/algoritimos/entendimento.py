@@ -299,6 +299,7 @@ ROTULOS = {
     "ajuda": "O que posso perguntar?", "causa": "Por que mudou?", "sem_dados": "O que os dados não têm",
 }
 ROTULOS_POR_GATILHO = {"tratamento": "Quimio e radioterapia", "mortalidade_real": "Mortes por câncer (todas)", "polos": "Cidades que mais tratam", "alcance": "O que há nos dados?",
+                       "sobre_mism": "O que é o MISM?",
                        "glossario": "O que significa um termo"}  # fora do índice (ver _por_gatilho)
 ROTULOS_TODOS = {**ROTULOS, **ROTULOS_POR_GATILHO}
 
@@ -585,10 +586,18 @@ EXCLUI_ALCANCE = re.compile(r"\b(mais|menos|maior|maiores|menor|proporc\w+|cresc
                             r"recebem|ranking|casos|internac\w+|obitos?|mortes?|valores?|gasto\w*|custo\w*|preven\w+|sintomas?|como funciona)\b")
 PALAVRA_MORTE = re.compile(r"\b(morr\w+|obito\w*|mort\w+|mortalidade)\b")
 
+# "MISM" é o nome do projeto e da Lia (antes, Escudo Feminino). Pergunta que cita o MISM e pede a função, o que é ou até onde alcança
+# ("qual é a função do MISM?", "para que serve o MISM?", "o que é o MISM?") ganha uma resposta fixa. Só vale com o nome na frase.
+GATILHO_SOBRE_MISM = re.compile(r"\bmism2?\b")
+PEDE_SOBRE_MISM = re.compile(r"\b(funcao|funcoes|serve|servir|para que|pra que|o que e|o que faz|o que fazem|faz|fazem|significa|quem e|objetivo|finalidade|proposito|"
+                             r"alcanc\w+|ate onde|capacidades?|conhece|sabe|abrange\w*|cobre|cobrem|como funciona|fale sobre|me fale|me explica|explique)\b")
+
 
 def _por_gatilho(texto):
     """'tratamento' ou 'mortalidade_real' quando a pergunta traz o gatilho dele; None nos outros casos."""
     norm = normalizar(texto)
+    if GATILHO_SOBRE_MISM.search(norm) and PEDE_SOBRE_MISM.search(norm):
+        return "sobre_mism"
     if GATILHO_TRATAMENTO.search(norm) and CONTA_TRATAMENTO.search(norm) and not PESSOAL_TRATAMENTO.search(norm):
         return "tratamento"
     if GATILHO_MORTES.search(norm) and PALAVRA_MORTE.search(norm):
@@ -639,8 +648,8 @@ def compreender(pergunta, disponiveis=None, memoria=None, classificar=None, cida
         # "me explica isso melhor" depois de uma resposta de dados: explica a resposta anterior (a mesma, em palavras simples)
         return Entendimento("intencao", intencao=memoria["intencao"], origem="explicar",
                             **{**base, "cancer": memoria.get("cancer")})
-    if _por_gatilho(texto) == "alcance":   # "quais cânceres vocês acompanham?" não é o ranking de cânceres
-        return Entendimento("intencao", intencao="alcance", origem="regras", **base)
+    if _por_gatilho(texto) in ("alcance", "sobre_mism"):   # "quais cânceres vocês acompanham?" não é o ranking de cânceres
+        return Entendimento("intencao", intencao=_por_gatilho(texto), origem="regras", **base)
     if _pede_comparar_canceres(texto, base, ano):
         return Entendimento("intencao", intencao="mais_aparece", origem="comparar_canceres", **base)
     gatilho = _por_gatilho(texto)

@@ -26,7 +26,7 @@ from inteligencia import (
     serie_doenca,
     _variacao_pct,
 )
-from lia import INICIO, Resposta, caminho, responder as lia_responder, sobre, tratamento as lia_tratamento, mortalidade_real as lia_mortalidade, polos as lia_polos, alcance as lia_alcance
+from lia import INICIO, Resposta, caminho, responder as lia_responder, sobre, tratamento as lia_tratamento, mortalidade_real as lia_mortalidade, polos as lia_polos, alcance as lia_alcance, sobre_mism as lia_sobre_mism
 
 # =====================================
 # ASSISTENTE DA LIA — a caixa "Pergunte à Lia" (10/2026)
@@ -441,7 +441,7 @@ def _sobre_ia(ctx, ia):
     ligada = ("Neste momento a IA de linguagem (Gemini) está **ligada**." if ia.ligada else
               "Neste momento a IA de linguagem (Gemini) está **desligada** (sem chave): respondo direto dos cálculos.")
     fala = (
-        "Sou a **Lia**, uma guia do MISM2, não uma pessoa. Por trás de mim há três partes de IA, "
+        "Sou a **Lia**, uma guia do MISM, não uma pessoa. Por trás de mim há três partes de IA, "
         "cada uma com um papel limitado:\n\n"
         f"1. **Entender a pergunta:** busca por palavras e por trechos de letras num vocabulário de {len(ent.INTENCOES)} assuntos que o Escudo "
         "sabe responder. Quando fico em dúvida, o Gemini escolhe um assunto da lista, nunca inventa outro.\n"
@@ -525,6 +525,8 @@ def _resposta_base(ctx, intencao, cancer, foco, ano, ia):
         return lia_polos(ctx, c), c, nota
     if intencao == "alcance":
         return lia_alcance(ctx), None, nota
+    if intencao == "sobre_mism":
+        return lia_sobre_mism(ctx), None, nota
     if intencao == "tratamento":
         return lia_tratamento(ctx, c), c, nota
     if intencao == "mortalidade_real":
