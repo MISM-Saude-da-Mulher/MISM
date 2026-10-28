@@ -1,5 +1,11 @@
 # Progresso do site MISM (ponto de retomada — 27/10/2026)
 
+> **ATUALIZAÇÃO (consolidação, 27/10/2026): `C:\MISM FINAL` é a ÚNICA pasta de trabalho e já é o repositório da organização**
+> (`MISM-Saude-da-Mulher/MISM`, branch `main`, privado). Os dados (`dados_parquet/`, `MISM2/banco`, `MISM2/dados`, `.env`, `MISM 1/dados`) continuam aqui e o git os ignora.
+> O `.git` antigo do MISM2 (remoto `vladimirsejas/MISM2`, commit `21d7ae1`) está guardado em `_backup\MISM2.git` (movido, não apagado); as versões antigas dos 7 arquivos
+> substituídos estão em `_backup\antes_da_consolidacao\`. `C:\MISM2` e `C:\MISM3` não foram tocados. Rodar: `python -m streamlit run app.py` ou `Abrir MISM.bat`.
+> As seções abaixo são o histórico do dia; onde falam de `C:\MISM_site_repo` (clone apagado a pedido do autor), vale esta pasta.
+
 ## Feito
 1. **CSVs → Parquet** (`dados_parquet/`): AIH unificado (496.785 linhas), geo do MISM 1, referência, derivados, 103 tabelas do CNES. Detalhes: `dados_parquet/LEIAME.md`.
 2. **Site único** (`app.py`, `paginas/mapa.py`): abas MAPA (MISM 1) e CENTRAL DE INFORMAÇÕES (MISM2). Rodar: `python -m streamlit run app.py`.
