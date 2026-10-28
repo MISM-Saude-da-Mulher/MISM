@@ -527,6 +527,12 @@ def _resposta_base(ctx, intencao, cancer, foco, ano, ia):
         return lia_alcance(ctx), None, nota
     if intencao == "sobre_mism":
         return lia_sobre_mism(ctx), None, nota
+    if intencao == "mapa_rio_claro":
+        return Resposta(
+            fala=("O **Mapa de Rio Claro** mostra as internações por câncer em mulheres (SIH/SUS, base pública do DATASUS) **por área de USF**, "
+                  "com filtros de câncer, ano e idade. Por padrão ele traz totais por área; há também a visão de casos detalhados. "
+                  "O ponto de cada área é o **centro dela**, não o endereço de alguém, e grupos com menos de 5 casos são somados. "
+                  "Internação não é caso novo nem incidência."), expressao="explicando"), None, nota
     if intencao == "tratamento":
         return lia_tratamento(ctx, c), c, nota
     if intencao == "mortalidade_real":
@@ -649,7 +655,9 @@ def _hospital_de_cancer(ctx, pergunta):
     return Resposta(fala=fala, expressao="acolhedora")
 
 
-LINKS = {"apoio": [LINK_APOIO], "sintoma": [LINK_APOIO, LINK_ONDE], "onde_atendida": [LINK_ONDE, LINK_APOIO]}
+LINK_MAPA = ("🗺️ Abrir o Mapa de Rio Claro", "paginas/mapa.py")   # só existe no site unificado; sem a página, o link some sozinho (app.py ignora o erro)
+
+LINKS = {"mapa_rio_claro": [LINK_MAPA], "apoio": [LINK_APOIO], "sintoma": [LINK_APOIO, LINK_ONDE], "onde_atendida": [LINK_ONDE, LINK_APOIO]}
 
 
 def _tornar(r, **extra):
@@ -895,7 +903,7 @@ def montar(ctx, e, pergunta, foco, perfil="TECNICO", ia=None):
         if nota:
             resp.fala = nota + "\n\n" + resp.fala
         resp.selo = "Texto fixo do Escudo (a IA não improvisa neste assunto)." if intencao in (
-            "sintoma", "apoio", "onde_atendida", "ajuda", "sobre_ia", "comparar_cidades", "causa", "sem_dados") else None
+            "sintoma", "apoio", "onde_atendida", "mapa_rio_claro", "ajuda", "sobre_ia", "comparar_cidades", "causa", "sem_dados") else None
     return _finalizar(resp)
 
 

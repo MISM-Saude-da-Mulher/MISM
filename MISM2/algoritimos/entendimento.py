@@ -299,7 +299,7 @@ ROTULOS = {
     "ajuda": "O que posso perguntar?", "causa": "Por que mudou?", "sem_dados": "O que os dados não têm",
 }
 ROTULOS_POR_GATILHO = {"tratamento": "Quimio e radioterapia", "mortalidade_real": "Mortes por câncer (todas)", "polos": "Cidades que mais tratam", "alcance": "O que há nos dados?",
-                       "sobre_mism": "O que é o MISM?",
+                       "sobre_mism": "O que é o MISM?", "mapa_rio_claro": "Mapa de Rio Claro",
                        "glossario": "O que significa um termo"}  # fora do índice (ver _por_gatilho)
 ROTULOS_TODOS = {**ROTULOS, **ROTULOS_POR_GATILHO}
 
@@ -593,11 +593,18 @@ PEDE_SOBRE_MISM = re.compile(r"\b(funcao|funcoes|serve|servir|para que|pra que|o
                              r"alcanc\w+|ate onde|capacidades?|conhece|sabe|abrange\w*|cobre|cobrem|como funciona|fale sobre|me fale|me explica|explique)\b")
 
 
+# Mapa de Rio Claro (projeto do grupo, página própria do MISM): perguntas sobre o mapa ou sobre as áreas de USF levam a ele.
+GATILHO_MAPA = re.compile(r"\b(mapa|mapas|usf|usfs|areas? de (usf|saude)|mapa de rio claro)\b")
+EXCLUI_MAPA = re.compile(r"\b(hospitais?|unacon|cacon|habilitad\w+|onde (ser|ficar) atendida|postos?|ubs)\b")
+
+
 def _por_gatilho(texto):
     """'tratamento' ou 'mortalidade_real' quando a pergunta traz o gatilho dele; None nos outros casos."""
     norm = normalizar(texto)
     if GATILHO_SOBRE_MISM.search(norm) and PEDE_SOBRE_MISM.search(norm):
         return "sobre_mism"
+    if GATILHO_MAPA.search(norm) and not EXCLUI_MAPA.search(norm):
+        return "mapa_rio_claro"
     if GATILHO_TRATAMENTO.search(norm) and CONTA_TRATAMENTO.search(norm) and not PESSOAL_TRATAMENTO.search(norm):
         return "tratamento"
     if GATILHO_MORTES.search(norm) and PALAVRA_MORTE.search(norm):

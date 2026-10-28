@@ -647,7 +647,7 @@ SOBRE_O_MISM = (
     "O MISM é um painel de informação sobre a saúde da mulher, com foco em câncer. Ele junta dados públicos do SUS com orientação de apoio, "
     "para Rio Claro e comparando com o Estado de São Paulo.\n\n"
     "Eu, a Lia, ajudo em três coisas: mostrar o que os dados dizem sobre os cânceres que levam mulheres ao hospital (quantas internações e "
-    "como mudaram ao longo dos anos); mostrar onde ser atendida (unidades de saúde, hospitais de câncer e os mais próximos da sua cidade); e "
+    "como mudaram ao longo dos anos); mostrar onde ser atendida (unidades de saúde, hospitais de câncer e os mais próximos da sua cidade) e, em Rio Claro, o mapa das áreas de USF; e "
     "orientar sobre o apoio à mulher (exames, direitos, proteção contra a violência e telefones de emergência: 190, 192 e 180).\n\n"
     "Os limites: não faço diagnóstico, não indico tratamento, não explico causas, e internação não é caso novo nem incidência."
 )

@@ -96,3 +96,4 @@
 
 ## 28/10/2026 - Identidade visual unica
 Todas as paginas (Panorama e abas, Apoio, Onde ser atendida, Hospitais de cancer, Mapa de Rio Claro) abrem com a linha de marca "MISM . ..." e a mesma barra de navegacao; a Lia e o guia comum. Mapa passou a ter a linha de marca e o mesmo respiro de topo. Etapa fechada; proxima: etapa dois.
+- Lia (28/10/2026): novo assunto "mapa_rio_claro" (onde fica o mapa, areas de USF) com texto fixo e link para a pagina do mapa; a Lia NAO foi levada para outras paginas (decisao do autor: Lia so onde ja estava). Teste: MISM2/algoritimos/teste_mapa_lia.py.
