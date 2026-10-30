@@ -181,6 +181,63 @@ def main():
     assert info["destinos"] == [("Campinas", 10)]
     print("[OK] Rio Claro: 142 atendimentos (140 moradoras, 2 de outros estados); 10 moradoras atendidas em Campinas")
 
+    # ---- por câncer: quanto das moradoras é atendido fora e onde (outubro/2026) ----
+    p = banco()
+    p.executemany("INSERT INTO municipios VALUES (?,?,?,?)", [(3538709, "PIRACICABA", "Piracicaba", "SP")])
+    p.execute("INSERT INTO hospitais VALUES ('6284582', 'AME PIRACICABA DR OSWALDO CAMBIAGHI', 'teste', '2026-10-08')")
+    add(p, 8, 2024, todos, "PELE_NAO_MELANOMA", "RIO_CLARO", "SP", "354390", "2082888")
+    add(p, 7, 2024, todos, "PELE_NAO_MELANOMA", "RIO_CLARO", "SP", "353870", "6284582")
+    add(p, 5, 2024, todos, "PELE_NAO_MELANOMA", "RIO_CLARO", "SP", "354580", "6212581")
+    add(p, 47, 2024, todos, "MAMA", "RIO_CLARO", "SP", "354390", "2082888")
+    add(p, 3, 2024, todos, "MAMA", "RIO_CLARO", "SP", "350950", "2079798")
+    add(p, 4, 2024, todos, "TIREOIDE", "RIO_CLARO", "SP", "350950", "2079798")
+    add(p, 2, 2024, todos, "MAMA", "RIO_CLARO", "SP", None, None)            # sem o município do hospital: só é contada à parte
+    add(p, 30, 2024, todos, "MAMA", "SANTA_GERTRUDES", "SP", "354390", "2082888")  # de outra cidade: não é "moradora"
+    p.commit()
+    fc = ti.fluxo_por_cancer_da_cidade(p, "RIO_CLARO", 3543907)
+    t = fc["tabela"]
+    assert list(t["tipo_cancer"]) == ["PELE_NAO_MELANOMA", "MAMA", "TIREOIDE"], list(t["tipo_cancer"])  # maior parcela fora primeiro, poucos casos por último
+    pele = t.iloc[0]
+    assert (pele["moradoras"], pele["na_cidade"], pele["fora"]) == (20, 8, 12) and aprox(pele["pct_fora"], 60.0)
+    assert (pele["destino"], pele["n_destino"]) == ("Piracicaba", 7)
+    assert pele["hospital"] == "AME PIRACICABA DR OSWALDO CAMBIAGHI" and pele["n_hospital"] == 7  # o nome vem da tabela hospitais
+    mama_c = t.iloc[1]
+    assert (mama_c["moradoras"], mama_c["fora"]) == (50, 3) and aprox(mama_c["pct_fora"], 6.0)
+    assert mama_c["destino"] == "-" and mama_c["n_destino"] == 0 and mama_c["hospital"] == "-"  # fora < 5: não nomeia ninguém
+    tire = t.iloc[2]
+    assert tire["moradoras"] == 4 and pd.isna(tire["pct_fora"])  # menos de 10: sem percentual
+    assert fc["sem_hospital"] == 2
+    assert t["moradoras"].sum() == 74  # as 30 de Santa Gertrudes ficaram de fora
+    texto_c = " ".join(ti.leitura_fluxo_por_cancer(fc, "Rio Claro"))
+    assert "Pele não melanoma é o câncer com maior parcela" in texto_c and "12 de 20 (60,0%)" in texto_c
+    assert "principalmente em Piracicaba (7)" in texto_c and "AME PIRACICABA DR OSWALDO CAMBIAGHI (7)" in texto_c
+    assert "a parcela atendida fora é de 6,0%" in texto_c and "Tireoide: menos de 10 internações" in texto_c
+    assert "internações, não pessoas" in texto_c and "só enxerga hospitais de SP" in texto_c
+    assert "não compara a qualidade dos hospitais" in texto_c
+    for proibido in ("porque", "devido", "por causa", "em razão", "r$"):
+        assert proibido not in texto_c.lower(), proibido
+    ct = ti.fluxo_por_cancer_da_cidade(c, "RIO_CLARO", 3543907)["tabela"]  # o banco do resto do teste: só mama
+    assert list(ct["tipo_cancer"]) == ["MAMA"] and (ct.iloc[0]["moradoras"], ct.iloc[0]["fora"]) == (150, 10)
+    assert (ct.iloc[0]["destino"], ct.iloc[0]["n_destino"], ct.iloc[0]["hospital"]) == ("Campinas", 10, "CNES 2079798")  # sem nome: o número
+    todos_dentro = banco()
+    add(todos_dentro, 12, 2024, todos, "MAMA", "RIO_CLARO", "SP", "354390", "2082888")
+    todos_dentro.commit()
+    assert "Todas as internações" in " ".join(ti.leitura_fluxo_por_cancer(ti.fluxo_por_cancer_da_cidade(todos_dentro, "RIO_CLARO", 3543907), "Rio Claro"))
+    so_poucos = banco()
+    add(so_poucos, 4, 2024, todos, "MAMA", "RIO_CLARO", "SP", "350950", "2079798")
+    so_poucos.commit()
+    assert "Nenhum câncer tem 10 ou mais" in " ".join(ti.leitura_fluxo_por_cancer(ti.fluxo_por_cancer_da_cidade(so_poucos, "RIO_CLARO", 3543907), "Rio Claro"))
+    assert ti.fluxo_por_cancer_da_cidade(c, "CIDADE_SEM_DADOS", 1) is None  # sem internações de moradoras: None, o painel avisa
+    assert "Este dado não existe" in ti.leitura_fluxo_por_cancer(None, "Rio Claro")[0]
+    quase_tudo = banco()
+    add(quase_tudo, 60, 2024, todos, "MAMA", "RIO_CLARO", "SP", "354390", "2082888")
+    add(quase_tudo, 1, 2024, todos, "MAMA", "RIO_CLARO", "SP", "350950", "2079798")
+    quase_tudo.commit()
+    texto_q = " ".join(ti.leitura_fluxo_por_cancer(ti.fluxo_por_cancer_da_cidade(quase_tudo, "RIO_CLARO", 3543907), "Rio Claro"))
+    assert texto_q.startswith("Quase todas as internações de moradoras de Rio Claro foram em hospitais da própria cidade")
+    assert "1 de 61 (1,6%)" in texto_q and "É o câncer com maior parcela" not in texto_q  # 1,6% não é destaque
+    print("[OK] por câncer: pele 12 de 20 fora (60%), Piracicaba e o hospital nomeados; <5 sem destino; <10 sem percentual; sem causa")
+
     # ---- de que cidades vêm as mulheres de fora atendidas na cidade (pedido do autor, 22/10/2026) ----
     v = banco()
     v.executemany("INSERT INTO municipios VALUES (?,?,?,?)", [

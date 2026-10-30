@@ -51,6 +51,7 @@ from inteligencia import (
     evolucao_fluxo,
     alcance_dados,
     leitura_cidade, leitura_cidade_visao,
+    fluxo_por_cancer_da_cidade, leitura_fluxo_por_cancer,
     leitura_evolucao,
     leitura_previsao,
     leitura_evolucao_fluxo,
@@ -233,6 +234,15 @@ def fluxo_cidade(origem, codigo_ibge):
     conn = sqlite3.connect(BANCO)
     try:
         return fluxo_da_cidade(conn, origem, codigo_ibge, UF_REFERENCIA)
+    finally:
+        conn.close()
+
+
+@st.cache_data
+def fluxo_cancer_cidade(origem, codigo_ibge):
+    conn = sqlite3.connect(BANCO)
+    try:
+        return fluxo_por_cancer_da_cidade(conn, origem, codigo_ibge, UF_REFERENCIA)
     finally:
         conn.close()
 
@@ -1655,6 +1665,32 @@ if aba == "Rede hospitalar":
                         figura_o.update_layout(bargap=0.3, showlegend=False)
                         st.plotly_chart(figura_o, width="stretch", theme=None, config=CONFIG_GRAFICO, key="fluxo_origens")
                 leitura("O que mostra", leitura_cidade_visao(info_cidade, nome_cidade, "aqui"))
+
+        # Por câncer (outubro/2026): a soma dos 7 cânceres esconde, por exemplo, o câncer de pele, que em Rio Claro é tratado
+        # em boa parte fora. Só descreve: conta internações, não pessoas, e não compara hospitais.
+        info_cancer = fluxo_cancer_cidade(ORIGEM, cidade["codigo_ibge"])
+        if info_cancer is not None:
+            pergunta(f"Quais cânceres as moradoras de {nome_cidade} tratam fora, e onde?", "cidade",
+                     f"só moradoras de {html.escape(nome_cidade)}, cada câncer separado, todos os anos")
+            tab_c = info_cancer["tabela"]
+            st.dataframe(pd.DataFrame({
+                "Câncer": tab_c["doenca"],
+                "Internações de moradoras": tab_c["moradoras"],
+                "Na própria cidade": tab_c["na_cidade"],
+                "Em outras cidades": tab_c["fora"],
+                "% fora": [f"{formatar_numero(v, 1)}%" if pd.notna(v) else "poucos casos" for v in tab_c["pct_fora"]],
+                "Cidade que mais recebeu": [f"{d} ({formatar_numero(n)})" if n else "—"
+                                            for d, n in zip(tab_c["destino"], tab_c["n_destino"])],
+                "Hospital mais frequente fora": [f"{h} ({formatar_numero(n)})" if n else "—"
+                                                 for h, n in zip(tab_c["hospital"], tab_c["n_hospital"])],
+            }), width="stretch", hide_index=True,
+                column_config={"Internações de moradoras": st.column_config.NumberColumn(format="%d"),
+                               "Na própria cidade": st.column_config.NumberColumn(format="%d"),
+                               "Em outras cidades": st.column_config.NumberColumn(format="%d")})
+            if info_cancer["sem_hospital"]:
+                st.caption(f"Outras {formatar_numero(info_cancer['sem_hospital'])} internações de moradoras ficaram fora desta "
+                           "conta por não trazerem o município do hospital.")
+            leitura("O que mostra", leitura_fluxo_por_cancer(info_cancer, nome_cidade))
         st.markdown("---")
 
 

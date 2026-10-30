@@ -1949,6 +1949,111 @@ def fluxo_da_cidade(conexao, origem, codigo_ibge, uf_referencia="SP"):
     }
 
 
+# ---------- por câncer: quanto das moradoras é atendido fora, e onde (outubro/2026) ----------
+#
+# `fluxo_da_cidade` soma os 7 cânceres. Esta olha cada câncer: pele não melanoma de Rio Claro, por exemplo, tem mais da
+# metade das internações em outras cidades, e isso some na soma. Só descreve: conta internações, não pessoas, e só enxerga
+# hospitais de SP. Não compara hospitais nem diz o motivo.
+
+MINIMO_CANCER_CIDADE = 10  # com menos internações de moradoras o câncer fica sem percentual (um caso muda tudo)
+MINIMO_DESTINO = 5         # destino ou hospital só é nomeado com pelo menos isto de internações
+PARCELA_FORA_NOTAVEL = 5.0  # abaixo disso (% fora) a leitura diz que quase tudo fica na cidade, em vez de destacar um câncer
+
+SQL_FLUXO_CANCER_CIDADE = """
+SELECT tipo_cancer, municipio_hospital, cnes, COUNT(*) AS n FROM internacoes
+WHERE origem = ? AND municipio = ? AND municipio_hospital IS NOT NULL
+GROUP BY tipo_cancer, municipio_hospital, cnes
+"""
+
+COLUNAS_FLUXO_CANCER = ["tipo_cancer", "doenca", "moradoras", "na_cidade", "fora", "pct_fora", "destino", "n_destino",
+                        "hospital", "n_hospital"]
+
+
+def fluxo_por_cancer_da_cidade(conexao, origem, codigo_ibge, uf_referencia="SP"):
+    """Para cada câncer, as internações de MORADORAS da cidade: na própria cidade, fora, o destino (cidade do hospital) e
+    o hospital mais frequente fora. Devolve {"tabela": DataFrame, "sem_hospital": n} ou None se o banco não tem o município
+    do hospital ou a cidade não tem internações. Ordem: maior parcela fora primeiro; cânceres com poucos casos por último."""
+    if not _banco_tem_fluxo(conexao):
+        return None
+    cod6 = str(codigo_ibge)[:6]
+    try:
+        dados = pd.read_sql(SQL_FLUXO_CANCER_CIDADE, conexao, params=(uf_referencia, origem))
+        sem = conexao.execute("SELECT COUNT(*) FROM internacoes WHERE origem = ? AND municipio = ? "
+                              "AND municipio_hospital IS NULL", (uf_referencia, origem)).fetchone()[0]
+    except Exception:
+        return None
+    if dados.empty:
+        return None
+    nomes_m, nomes_h = _nomes_municipios(conexao), _nomes_hospitais(conexao)
+    dados["municipio_hospital"] = dados["municipio_hospital"].astype(str)
+    linhas = []
+    for cancer, g in dados.groupby("tipo_cancer"):
+        total = int(g["n"].sum())
+        na_cidade = int(g.loc[g["municipio_hospital"] == cod6, "n"].sum())
+        fora_g, fora = g[g["municipio_hospital"] != cod6], total - na_cidade
+        destino, n_destino, hospital, n_hospital = "-", 0, "-", 0
+        if fora >= MINIMO_DESTINO:
+            por_cidade = fora_g.groupby("municipio_hospital")["n"].sum().reset_index().sort_values(
+                ["n", "municipio_hospital"], ascending=[False, True])
+            if int(por_cidade.iloc[0]["n"]) >= MINIMO_DESTINO:
+                destino, n_destino = nome_do_hospital_municipio(nomes_m, por_cidade.iloc[0]["municipio_hospital"]), int(por_cidade.iloc[0]["n"])
+            por_hosp = fora_g.groupby("cnes")["n"].sum().reset_index().sort_values(["n", "cnes"], ascending=[False, True])
+            if int(por_hosp.iloc[0]["n"]) >= MINIMO_DESTINO:
+                cnes = str(por_hosp.iloc[0]["cnes"]).strip().zfill(7)
+                hospital, n_hospital = nomes_h.get(cnes, f"CNES {cnes}"), int(por_hosp.iloc[0]["n"])
+        linhas.append({"tipo_cancer": cancer, "doenca": nome_doenca(cancer), "moradoras": total, "na_cidade": na_cidade,
+                       "fora": fora, "pct_fora": _pct(fora, total) if total >= MINIMO_CANCER_CIDADE else None,
+                       "destino": destino, "n_destino": n_destino, "hospital": hospital, "n_hospital": n_hospital})
+    tabela = pd.DataFrame(linhas, columns=COLUNAS_FLUXO_CANCER)
+    tabela["_ordem"] = tabela["pct_fora"].fillna(-1.0)
+    tabela = tabela.sort_values(["_ordem", "moradoras"], ascending=[False, False]).drop(columns="_ordem").reset_index(drop=True)
+    return {"tabela": tabela, "sem_hospital": int(sem)}
+
+
+def leitura_fluxo_por_cancer(info, nome_cidade):
+    """Frases sobre o fluxo por câncer. Só descreve; nunca atribui causa."""
+    if not info or info["tabela"].empty:
+        return [f"Este dado não existe para {nome_cidade}: o banco não tem internações de moradoras com o município do hospital."]
+    tabela = info["tabela"]
+    com = tabela[tabela["pct_fora"].notna()]
+    frases = []
+    if com.empty:
+        frases.append(f"Nenhum câncer tem {MINIMO_CANCER_CIDADE} ou mais internações de moradoras de {nome_cidade}: com tão poucos "
+                      "casos, a parcela atendida fora não é confiável.")
+    else:
+        topo = com.iloc[0]
+        if int(topo["fora"]) == 0:
+            frases.append(f"Todas as internações de moradoras de {nome_cidade} (nos cânceres com {MINIMO_CANCER_CIDADE} ou mais) "
+                          "foram em hospitais da própria cidade.")
+        else:
+            pouco = float(topo["pct_fora"]) < PARCELA_FORA_NOTAVEL
+            f = (f"{topo['doenca']} é o câncer com maior parcela de internações de moradoras de {nome_cidade} em hospitais de "
+                 f"outras cidades: {formatar_numero(topo['fora'])} de {formatar_numero(topo['moradoras'])} "
+                 f"({formatar_numero(topo['pct_fora'], 1)}%)")
+            if pouco:
+                f = ("Quase todas as internações de moradoras de " + nome_cidade + " foram em hospitais da própria cidade. A maior "
+                     f"parcela fora é a de {topo['doenca']}: {formatar_numero(topo['fora'])} de {formatar_numero(topo['moradoras'])} "
+                     f"({formatar_numero(topo['pct_fora'], 1)}%)")
+            if topo["n_destino"]:
+                f += f", principalmente em {topo['destino']} ({formatar_numero(topo['n_destino'])})"
+            if topo["n_hospital"]:
+                f += f"; o hospital mais frequente foi {topo['hospital']} ({formatar_numero(topo['n_hospital'])})"
+            frases.append(f + ".")
+            demais = com.iloc[1:]
+            if not demais.empty:
+                menor, maior = round(float(demais["pct_fora"].min()), 1), round(float(demais["pct_fora"].max()), 1)
+                faixa = (f"é de {formatar_numero(menor, 1)}%" if menor == maior
+                         else f"vai de {formatar_numero(menor, 1)}% a {formatar_numero(maior, 1)}%")
+                frases.append(f"Nos outros cânceres com {MINIMO_CANCER_CIDADE} ou mais internações, a parcela atendida fora {faixa}.")
+    pequenos = tabela[tabela["pct_fora"].isna()]
+    if not pequenos.empty:
+        frases.append(", ".join(pequenos["doenca"]) + f": menos de {MINIMO_CANCER_CIDADE} internações de moradoras, "
+                      "sem percentual (poucos casos).")
+    frases.append("Conta internações, não pessoas, e só enxerga hospitais de SP. Mostra onde as moradoras foram atendidas, não "
+                  "explica por quê, e não compara a qualidade dos hospitais.")
+    return frases
+
+
 def _nome_da_chave(chave):
     """'SANTA_GERTRUDES' -> 'Santa Gertrudes' (plano B quando a cidade não está no catálogo `municipios`)."""
     return str(chave).replace("_", " ").title()
