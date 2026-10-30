@@ -1,22 +1,22 @@
-area_usf;mulheres;mulheres_40_mais;domicilios
-Ajapi e Alam Grei;1722;767;1479
-Arco-Íris;3304;1714;2653
-Assistência;409;175;359
-Bairro do Estádio, Dona Angela, Sáude, Centro;7828;4947;7202
-Bela Vista, Cidade Nova;9777;5998;9906
-Boa Vista, Santa Maria, Jardim Azul;3763;1514;2657
-Centenário, Jd. Paulista, Cidade Claret, Jd. Maria Cristina;5853;2683;4992
-Ferraz;111;65;160
-Grande Cervezão;9007;4209;6963
-Guanabara, Inocoop, Chácara Luza;5293;2221;4567
-Jardim Conduta, Parque Flórida;6213;3073;5383
-Jardim Nova Rio Claro, Jardim Palmeiras;3533;1476;2905
-Jardim Novo I e II;3198;1157;2473
-Jardim Panorama, Jd Wenzel, Jd. Cidade Azul;7700;3381;6263
-Jardim das Flores, Progresso, Parque São Jorge;3864;1576;2830
-Novo Wenzel e Bonsucesso;3314;1073;2245
-Parque Mãe Preta, Vila Verde, Recreio das Águas Claras;5009;2225;3716
-Santa Elisa, Bela Vista, Jd. Matheus Maniero;3990;1868;3250
-Santana;8319;5096;7497
-Terra Nova;3744;1085;2829
-Vila Cristina;3562;1795;2734
+area_usf;mulheres;mulheres_40_mais;domicilios;m_ate29;m_30a39;m_40a49;m_50a59;m_60a69;m_70mais
+Ajapi e Alam Grei;1722;767;1479;683;261;265;207;158;137
+Arco-Íris;3304;1714;2653;1085;504;506;403;462;343
+Assistência;409;175;359;159;70;60;52;38;25
+Bairro do Estádio, Dona Angela, Sáude, Centro;7828;4947;7202;1923;950;1048;1145;1121;1632
+Bela Vista, Cidade Nova;9777;5998;9906;2585;1172;1352;1402;1502;1742
+Boa Vista, Santa Maria, Jardim Azul;3763;1514;2657;1667;581;565;409;320;220
+Centenário, Jd. Paulista, Cidade Claret, Jd. Maria Cristina;5853;2683;4992;2130;1031;1024;722;495;442
+Ferraz;111;65;160;33;13;17;16;18;14
+Grande Cervezão;9007;4209;6963;3405;1384;1362;1131;933;783
+Guanabara, Inocoop, Chácara Luza;5293;2221;4567;2124;944;774;670;490;287
+Jardim Conduta, Parque Flórida;6213;3073;5383;2043;1086;1073;837;611;552
+Jardim Nova Rio Claro, Jardim Palmeiras;3533;1476;2905;1435;622;565;435;297;179
+Jardim Novo I e II;3198;1157;2473;1438;601;505;317;228;108
+Jardim Panorama, Jd Wenzel, Jd. Cidade Azul;7700;3381;6263;3003;1303;1203;968;699;511
+Jardim das Flores, Progresso, Parque São Jorge;3864;1576;2830;1690;597;557;490;339;190
+Novo Wenzel e Bonsucesso;3314;1073;2245;1714;520;486;288;181;118
+Parque Mãe Preta, Vila Verde, Recreio das Águas Claras;5009;2225;3716;1934;849;879;715;388;244
+Santa Elisa, Bela Vista, Jd. Matheus Maniero;3990;1868;3250;1375;744;735;502;345;286
+Santana;8319;5096;7497;2112;1093;1206;1176;1233;1480
+Terra Nova;3744;1085;2829;1965;689;522;313;169;81
+Vila Cristina;3562;1795;2734;1281;485;545;530;422;298

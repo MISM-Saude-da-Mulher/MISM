@@ -35,6 +35,10 @@ SAIDA = RAIZ / "dados" / "referencia" / "mulheres_por_area_usf.csv"
 COD_MUNICIPIO = "3543907"          # Rio Claro (SP)
 LATITUDE_CIDADE = -22.4            # só para achatar a longitude (cos da latitude) ao medir frações de superfície
 COLUNAS_MULHERES_40_MAIS = ["V01027", "V01028", "V01029", "V01030"]   # feminino: 40-49, 50-59, 60-69, 70 ou mais
+# Mulheres por faixa de idade (feminino, V01020 a V01030 = 0-4, 5-9, 10-14, 15-19, 20-24, 25-29, 30-39, 40-49, 50-59, 60-69, 70 ou mais),
+# agrupadas nas faixas que o estudo usa para ajustar pela idade (calcular_estudo_rio_claro.py).
+FAIXAS_IDADE = {"m_ate29": ["V01020", "V01021", "V01022", "V01023", "V01024", "V01025"], "m_30a39": ["V01026"], "m_40a49": ["V01027"],
+                "m_50a59": ["V01028"], "m_60a69": ["V01029"], "m_70mais": ["V01030"]}
 
 
 def numero(serie):
@@ -71,6 +75,8 @@ def main():
     tabela["domicilios"] = numero(basico["v0003"])
     tabela["mulheres"] = numero(demografia["V01008"]).reindex(tabela.index)
     tabela["mulheres_40_mais"] = demografia[COLUNAS_MULHERES_40_MAIS].apply(numero).sum(axis=1, min_count=1).reindex(tabela.index)
+    for nome_faixa, colunas_v in FAIXAS_IDADE.items():
+        tabela[nome_faixa] = demografia[colunas_v].apply(numero).sum(axis=1, min_count=1).reindex(tabela.index)
     tabela = tabela.fillna(0)
 
     achata = lambda g: affinity.scale(g, xfact=math.cos(math.radians(LATITUDE_CIDADE)), yfact=1, origin=(0, 0))
@@ -81,7 +87,7 @@ def main():
         areas = {ft["properties"]["nome"]: achata(shape(ft["geometry"])) for ft in json.load(f)["features"]
                  if ft["geometry"]["type"] == "Polygon" and ft["properties"].get("nome")}
 
-    colunas = ["mulheres", "mulheres_40_mais", "domicilios"]
+    colunas = ["mulheres", "mulheres_40_mais", "domicilios"] + list(FAIXAS_IDADE)
     por_area = {a: dict.fromkeys(colunas, 0.0) for a in areas}
     fora = dict.fromkeys(colunas, 0.0)
     for cd, g in setores.items():

@@ -66,6 +66,26 @@ st.markdown("""<style>
 .res-top3 li { display: flex; gap: 10px; align-items: center; margin: 4px 0; }
 .res-top3 em { flex: 0 0 24px; height: 24px; border-radius: 50%; background: #eb6834; color: #fff; font-style: normal; font-weight: 700;
                display: flex; align-items: center; justify-content: center; font-size: .85rem; }
+/* mapa e linhas da idade ajustada, cartões de tendência */
+.res-fio { stroke-dasharray: 1; stroke-dashoffset: 1; animation: res-desenha 1s ease-out forwards; }
+.res-ponto { transform-box: fill-box; transform-origin: center; animation: res-pop .45s ease-out both; }
+@keyframes res-desenha { to { stroke-dashoffset: 0; } }
+@keyframes res-pop { from { opacity: 0; transform: scale(.1); } to { opacity: 1; transform: scale(1); } }
+.res-floresta text { font-family: 'DM Sans', sans-serif; fill: #3d3852; font-size: 12.5px; }
+.res-floresta .eixo { fill: #8a8599; font-size: 11px; }
+.res-tend { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-top: 10px; }
+.res-tc { background: #fff; border: 1px solid #e6dfe8; border-top: 4px solid #c9c0cf; border-radius: 14px; padding: 14px 16px 10px; }
+.res-tc.sobe { border-top-color: #eb6834; }
+.res-tc.cai { border-top-color: #6b86a8; }
+.res-tc.todos { background: #faf3ee; }
+.res-tc h5 { margin: 0; padding: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 1.1rem; color: #2a1730; }
+.res-tc b { display: block; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 2.1rem; line-height: 1.1; color: #5b2a55; letter-spacing: -.02em; }
+.res-tc.sobe b { color: #c4501a; }
+.res-tc .ao-ano { color: #625d72; font-size: .9rem; }
+.res-tc .selo { display: inline-block; margin-top: 4px; font-size: .78rem; font-weight: 700; letter-spacing: .04em; color: #8a8599; }
+.res-tc.sobe .selo { color: #c4501a; }
+.res-tc.cai .selo { color: #46617f; }
+.res-tc svg { width: 100%; height: 40px; margin-top: 6px; display: block; }
 /* tabela por tipo de câncer */
 .res-sub { font-family: Georgia, 'Times New Roman', serif; font-size: 1.3rem; color: #2a1730; margin: 30px 0 8px; }
 .res-tab { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #e6dfe8; border-radius: 12px; overflow: hidden; font-size: .98rem; }
@@ -135,6 +155,15 @@ def _areas():
     return sorted(linhas, key=lambda x: -x[2])
 
 
+@st.cache_data(show_spinner=False)
+def _estudo():
+    """Resultados calculados no notebook por MISM 1/calcular_estudo_rio_claro.py (idade ajustada por área e tendência por câncer)."""
+    pasta = gerar_mapa.RAIZ_PROJETO / "dados" / "referencia"
+    areas_idade = pd.read_csv(pasta / "estudo_areas_idade_ajustada.csv", sep=";", encoding="utf-8")
+    tendencia = pd.read_csv(pasta / "estudo_tendencia_por_cancer.csv", sep=";", encoding="utf-8")
+    return areas_idade, tendencia
+
+
 def _seguro(funcao, padrao=None):
     try:
         return funcao()
@@ -201,7 +230,25 @@ def _projetar(geojson_polys, largura=600, altura=520, margem=14):
     return lambda lon, lat: (dx + (lon - lon0) * k * escala, dy + (lat0 - lat) * escala)
 
 
-def mapa_das_areas(areas_com_taxa):
+COR_ACIMA, COR_DENTRO, COR_ABAIXO, COR_POUCOS = "#eb6834", "#a89bbd", "#6b86a8", "#e8e1ec"
+
+
+def classe(r):
+    """acima / abaixo do esperado pela idade (a margem de erro de 90% não toca o 1,0), dentro dele, ou poucos casos para dizer."""
+    if r["casos"] < 10:
+        return "poucos"
+    if r["ic90_baixo"] > 1:
+        return "acima"
+    if r["ic90_alto"] < 1:
+        return "abaixo"
+    return "dentro"
+
+
+COR_CLASSE = {"acima": COR_ACIMA, "dentro": COR_DENTRO, "abaixo": COR_ABAIXO, "poucos": COR_POUCOS}
+
+
+def mapa_das_areas(tabela_areas):
+    """Mapa das áreas de saúde pintado por 'acima, dentro ou abaixo do esperado pela idade'. As três mais acima pulsam."""
     usf = json.load(open(gerar_mapa.USF_GEOJSON_PATH, encoding="utf-8"))
     polys = []
     for f in usf["features"]:
@@ -214,60 +261,143 @@ def mapa_das_areas(areas_com_taxa):
     k = math.cos(math.radians(-22.4))
     polys = [p for p, c in zip(polys, cent) if math.hypot((c[0] - med[0]) * k * 111.32, (c[1] - med[1]) * 110.57) <= 9]
     proj = _projetar(polys)
-    taxa = {a: t for a, _, t in areas_com_taxa}
-    casos = {a: c for a, c, _ in areas_com_taxa}
-    valores = sorted(taxa.values())
-    cortes = [valores[min(len(valores) - 1, int(p * len(valores)))] for p in (0.2, 0.4, 0.6, 0.8)] if len(valores) >= 5 else []
-    cores = ["#efe4f1", "#d7bfdc", "#b78bc2", "#8e4f9c", "#5b2a55"]
-
-    def cor(t):
-        if not cortes:
-            return cores[2]
-        return cores[sum(1 for c in cortes if t >= c)]
-    top3 = [a for a, _, _ in areas_com_taxa[:3]]
+    linhas = {r["area_usf"]: r for _, r in tabela_areas.iterrows()}
+    top3 = [r["area_usf"] for _, r in tabela_areas.iterrows() if classe(r) == "acima" and r["casos"] >= 20][:3]
     desenho, centros = [], {}
     for nome, aneis in polys:
         d = " ".join("M" + " L".join(f"{x:.1f},{y:.1f}" for x, y in (proj(lon, lat) for lon, lat in anel)) + "Z" for anel in aneis)
-        t = taxa.get(nome)
-        dica = f"{nome}: {n_fmt(t)} internações por 10 mil mulheres ({casos[nome]} casos)" if t is not None else f"{nome}: poucos casos para calcular"
-        desenho.append(f'<path d="{d}" fill="{cor(t) if t is not None else "#e8e1ec"}" fill-rule="evenodd" class="{"pulsa" if nome in top3 else ""}">'
-                       f'<title>{html.escape(dica)}</title></path>')
+        r = linhas.get(nome)
+        cl = classe(r) if r is not None else "poucos"
+        if r is not None:
+            dica = (f"{nome}: {r['casos']} internações; a idade das mulheres explicaria {n_fmt(r['esperado'])}. "
+                    f"Razão {n_fmt(r['razao'], 2)} (margem de erro {n_fmt(r['ic90_baixo'], 2)} a {n_fmt(r['ic90_alto'], 2)})")
+        else:
+            dica = f"{nome}: poucos casos para calcular"
+        desenho.append(f'<path d="{d}" fill="{COR_CLASSE[cl]}" fill-rule="evenodd" class="{"pulsa" if nome in top3 else ""}"><title>{html.escape(dica)}</title></path>')
         xs, ys = zip(*(proj(lon, lat) for lon, lat in aneis[0]))
         centros[nome] = (sum(xs) / len(xs), sum(ys) / len(ys))
-    marcas = "".join(f'<circle cx="{centros[a][0]:.1f}" cy="{centros[a][1]:.1f}" r="13" fill="#eb6834" stroke="#fff" stroke-width="2"/>'
+    marcas = "".join(f'<circle cx="{centros[a][0]:.1f}" cy="{centros[a][1]:.1f}" r="13" fill="#2a1730" stroke="#fff" stroke-width="2"/>'
                      f'<text x="{centros[a][0]:.1f}" y="{centros[a][1] + 5:.1f}" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">{i + 1}</text>'
-                     for i, a in enumerate(top3))
-    faixas = ["menor"] + [""] * 3 + ["maior"]
-    legenda = '<div class="res-leg">' + "".join(f'<span><i style="background:{c}"></i>{t}</span>' for c, t in zip(cores, faixas)) + \
-              '<span><i style="background:#e8e1ec"></i>poucos casos</span></div>'
+                     for i, a in enumerate(top3) if a in centros)
+    legenda = ('<div class="res-leg">' + "".join(f'<span><i style="background:{COR_CLASSE[c]}"></i>{t}</span>' for c, t in
+               (("acima", "acima do esperado pela idade"), ("dentro", "dentro do esperado"), ("abaixo", "abaixo do esperado"), ("poucos", "poucos casos"))) + "</div>")
     return f'<div class="res-mapa"><svg viewBox="0 0 600 520" role="img" aria-label="Mapa das áreas de saúde de Rio Claro">{"".join(desenho)}{marcas}</svg>{legenda}</div>', top3
 
 
+def nome_curto(nome, limite=40):
+    return nome if len(nome) <= limite else nome[:limite - 1].rsplit(",", 1)[0] + "…"
+
+
+def floresta(tabela_areas):
+    """Uma linha por área: a bolinha é a razão (1,0 = o que a idade explica) e o fio é a margem de erro de 90%. Fio que cruza o 1,0 = não dá para dizer."""
+    linhas = [r for _, r in tabela_areas.iterrows() if r["casos"] >= 10]
+    esq, largura, topo, passo = 300, 800, 28, 27
+    xmin, xmax = 0.3, 2.3
+    X = lambda v: esq + (min(max(v, xmin), xmax) - xmin) / (xmax - xmin) * (largura - esq - 20)
+    altura = topo + passo * len(linhas) + 38
+    partes = [f'<line x1="{X(1):.1f}" y1="{topo - 12}" x2="{X(1):.1f}" y2="{altura - 30}" stroke="#2a1730" stroke-width="1.5" stroke-dasharray="4 4"/>',
+              f'<text x="{X(1):.1f}" y="{topo - 16}" text-anchor="middle" class="eixo" style="fill:#2a1730;font-weight:700">o que a idade explica (1,0)</text>']
+    for v in (0.5, 1.5, 2.0):
+        partes.append(f'<text x="{X(v):.1f}" y="{altura - 12}" text-anchor="middle" class="eixo">{n_fmt(v, 1)}</text>')
+    for i, r in enumerate(linhas):
+        y, cor = topo + passo * i + 8, COR_CLASSE[classe(r)]
+        atraso = i * 70
+        partes.append(f'<text x="{esq - 12}" y="{y + 4}" text-anchor="end">{html.escape(nome_curto(r["area_usf"]))}</text>')
+        partes.append(f'<line class="res-fio" pathLength="1" x1="{X(r["ic90_baixo"]):.1f}" y1="{y}" x2="{X(r["ic90_alto"]):.1f}" y2="{y}" stroke="{cor}" '
+                      f'stroke-width="3" stroke-linecap="round" style="animation-delay:{atraso}ms"/>')
+        partes.append(f'<circle class="res-ponto" cx="{X(r["razao"]):.1f}" cy="{y}" r="6.5" fill="{cor}" stroke="#fff" stroke-width="1.8" style="animation-delay:{atraso + 350}ms">'
+                      f'<title>{html.escape(r["area_usf"])}: razão {n_fmt(r["razao"], 2)}, margem de erro {n_fmt(r["ic90_baixo"], 2)} a {n_fmt(r["ic90_alto"], 2)}; '
+                      f'chance de estar acima: {n_fmt(100 * r["prob_acima"])}%</title></circle>')
+    return f'<div class="res-floresta"><svg viewBox="0 0 {largura} {altura}" width="100%" role="img" aria-label="Razão entre internações observadas e esperadas pela idade, por área">{"".join(partes)}</svg></div>'
+
+
+def sparkline(valores, cor, atraso=0):
+    if len(valores) < 2:
+        return ""
+    lo, hi = min(valores), max(valores)
+    pts = [(4 + i * (112 / (len(valores) - 1)), 34 - (v - lo) / ((hi - lo) or 1) * 28) for i, v in enumerate(valores)]
+    caminho = "M" + " L".join(f"{x:.1f},{y:.1f}" for x, y in pts)
+    return (f'<svg viewBox="0 0 120 40" aria-hidden="true"><path class="res-fio" pathLength="1" d="{caminho}" fill="none" stroke="{cor}" stroke-width="2.4" '
+            f'stroke-linecap="round" stroke-linejoin="round" style="animation-delay:{atraso}ms"/>'
+            f'<circle class="res-ponto" cx="{pts[-1][0]:.1f}" cy="{pts[-1][1]:.1f}" r="3.6" fill="{cor}" style="animation-delay:{atraso + 900}ms"/></svg>')
+
+
 cabecalho(1, "Onde agir primeiro")
-esq, dir_ = st.columns([1, 1.15], gap="large")
-with esq:
-    if areas:
-        topo = areas[:3]
-        itens = "".join(f"<li><em>{i + 1}</em><span><b>{html.escape(a)}</b> · {n_fmt(t)} por 10 mil mulheres</span></li>" for i, (a, _, t) in enumerate(topo))
-        st.markdown('<div class="res-txt">Nas áreas de saúde abaixo há mais internações por câncer <b>em proporção às mulheres que moram nelas</b>. '
-                    'É a proporção, e não o tamanho da área, que as coloca no topo. Quanto mais escuro o mapa, maior a proporção.</div>'
+estudo = _seguro(_estudo)
+tabela_areas, tendencia = (estudo if estudo else (None, None))
+if tabela_areas is not None and not tabela_areas.empty:
+    grandes = tabela_areas[tabela_areas["casos"] >= 20]
+    acima = [r for _, r in grandes.iterrows() if classe(r) == "acima"]
+    abaixo = [r for _, r in grandes.iterrows() if classe(r) == "abaixo"]
+    esq, dir_ = st.columns([1, 1.15], gap="large")
+    resultado = _seguro(lambda: mapa_das_areas(tabela_areas))
+    with esq:
+        itens = "".join(f"<li><em>{i + 1}</em><span><b>{html.escape(r['area_usf'])}</b> · {n_fmt(r['razao'], 2)} vez o esperado ({r['casos']} internações)</span></li>"
+                        for i, r in enumerate(acima[:3]))
+        st.markdown('<div class="res-txt">Cada área tem mulheres de idades diferentes, e quem é mais velha interna mais. Por isso o estudo compara as internações de cada área '
+                    '<b>com o que a idade das suas mulheres explicaria</b>. As áreas abaixo têm <b>mais do que a idade explica, com confiança alta</b>:</div>'
                     f'<ul class="res-top3">{itens}</ul>'
                     + acao("Saúde e Mulher", "Levar a prevenção e convocar as mulheres para mamografia e preventivo <b>primeiro nessas áreas</b>."),
                     unsafe_allow_html=True)
-        st.markdown('<div class="res-nota">Internações por câncer para cada 10 mil mulheres da área (2021–2025). Taxa bruta, sem ajuste de idade; '
-                    'só áreas com 20 casos ou mais. Passe o mouse sobre uma área para ver o número.</div>', unsafe_allow_html=True)
-    else:
-        st.info("A comparação por área não está disponível agora.")
-with dir_:
-    if areas:
-        resultado = _seguro(lambda: mapa_das_areas(areas))
+        if abaixo:
+            nomes_abaixo = ", ".join(html.escape(r["area_usf"]) for r in abaixo[:3])
+            st.markdown('<div class="res-nota"><b>E as que estão abaixo?</b> ' + nomes_abaixo + (" e outras" if len(abaixo) > 3 else "") +
+                        ' têm menos internações do que a idade prevê. Isso <b>não</b> quer dizer menos câncer: o SUS só conta quem se interna pelo SUS, e quem tem plano '
+                        'de saúde particular não aparece. É um sinal de <b>menor dependência do SUS</b> nessas áreas.</div>', unsafe_allow_html=True)
+    with dir_:
         if resultado:
             st.markdown(resultado[0], unsafe_allow_html=True)
+    st.markdown('<div class="res-sub">Quão firme é cada resultado</div>', unsafe_allow_html=True)
+    st.markdown('<div class="res-txt">A bolinha é a razão entre as internações que houve e as que a idade explica (1,0 = exatamente o esperado). O fio é a margem de erro: '
+                '<b>se o fio cruza a linha tracejada, não dá para afirmar que a área está acima ou abaixo</b>; pode ser só acaso.</div>', unsafe_allow_html=True)
+    st.markdown(floresta(tabela_areas), unsafe_allow_html=True)
+    st.markdown('<div class="res-nota">Internações por câncer 2021–2025 de mulheres que moram na área, comparadas com a taxa de Rio Claro inteiro em cada faixa de idade '
+                '(Censo 2022). Margem de erro de 90%. Só áreas com 10 casos ou mais; as com menos de 20 casos não entram na lista acima. '
+                'Passe o mouse sobre a bolinha ou sobre a área para ver os números.</div>', unsafe_allow_html=True)
+else:
+    st.info("A comparação por área não está disponível agora.")
 
 
-# ---------- 2. quem sai e quem chega: mapa animado de fluxos ----------
+# ---------- 2. o que está subindo: tendência, não previsão ----------
 
-cabecalho(2, "Quem sai da cidade e quem chega")
+cabecalho(2, "O que está subindo")
+if tendencia is not None and not tendencia.empty:
+    def tipo_tendencia(r):
+        return "sobe" if r["ic90_baixo"] > 0 else "cai" if r["ic90_alto"] < 0 else "neutro"
+
+    def pct_txt(v):
+        return ("+" if v > 0 else "") + n_fmt(v) + "%"
+
+    cartoes_t, sobem = [], []
+    ordem = pd.concat([tendencia[tendencia["tipo_cancer"] == "TODOS"], tendencia[tendencia["tipo_cancer"] != "TODOS"].sort_values("pct_ano", ascending=False)])
+    for i, (_, r) in enumerate(ordem.iterrows()):
+        tp = tipo_tendencia(r)
+        cor = {"sobe": COR_ACIMA, "cai": COR_ABAIXO, "neutro": "#8a7a90"}[tp]
+        selo = {"sobe": "↗ SOBE", "cai": "↘ CAI", "neutro": "→ SEM MUDANÇA CLARA"}[tp]
+        valores = [float(x.split(":")[1]) for x in str(r["serie"]).split("|")]
+        if tp == "sobe" and r["tipo_cancer"] != "TODOS":
+            sobem.append(r)
+        cartoes_t.append(f'<div class="res-tc {tp}{" todos" if r["tipo_cancer"] == "TODOS" else ""}"><h5>{html.escape(r["doenca"])}</h5><b>{pct_txt(r["pct_ano"])}</b>'
+                         f'<span class="ao-ano">ao ano, entre {pct_txt(r["ic90_baixo"])} e {pct_txt(r["ic90_alto"])}</span><br><span class="selo">{selo}</span>'
+                         f'{sparkline(valores, cor, i * 120)}</div>')
+    todos = tendencia[tendencia["tipo_cancer"] == "TODOS"].iloc[0]
+    nomes_sobem = ", ".join(html.escape(r["doenca"].lower()) for r in sobem)
+    st.markdown(f'<div class="res-txt">Nos últimos 13 anos, as internações por câncer de mulheres de Rio Claro <b>sobem {n_fmt(todos["pct_ano"])}% ao ano</b> '
+                f'(entre {n_fmt(todos["ic90_baixo"])}% e {n_fmt(todos["ic90_alto"])}%). Sobem com segurança: <b>{nomes_sobem}</b>. '
+                'Esta é a <b>tendência</b> do período: para que lado os números caminham e com que segurança. <b>Não é previsão</b>: não diz quanto será no ano que vem.</div>'
+                + acao("Gestão", "Planejar a rede (leitos, exames, equipes) já contando com a alta, em vez de esperar o aperto."),
+                unsafe_allow_html=True)
+    st.markdown('<div class="res-tend">' + "".join(cartoes_t) + "</div>", unsafe_allow_html=True)
+    st.markdown('<div class="res-nota">O fio de cada cartão é o número de internações por ano (ajustado pelos meses que a fonte tem). "Sobe" quer dizer que a margem de erro de 90% '
+                'fica toda acima de zero. Internação cresce também com a população (cerca de 1% ao ano em Rio Claro) e com a capacidade dos hospitais: '
+                '<b>não é, sozinha, mais câncer</b>.</div>', unsafe_allow_html=True)
+else:
+    st.info("A tendência não está disponível agora.")
+
+
+# ---------- 3. quem sai e quem chega: mapa animado de fluxos ----------
+
+cabecalho(3, "Quem sai da cidade e quem chega")
 fluxo = _seguro(lambda: fluxo_animado.dados_do_fluxo(cidade, dados.get("posicoes"), "Rio Claro", REGIAO_DE_SAUDE))
 esq, dir_ = st.columns(2, gap="large")
 with esq:
@@ -319,14 +449,14 @@ if tabela is not None and not tabela.empty:
                 + "</ul></div>", unsafe_allow_html=True)
 
 
-# ---------- 3. onde as mulheres morrem: 100 pontinhos por cidade ----------
+# ---------- 4. onde as mulheres morrem: 100 pontinhos por cidade ----------
 
 def pontinhos(fora, ordem=0):
     n = max(0, min(100, round(fora)))
     return "".join(f'<i class="{"f" if i < n else ""}" style="animation-delay:{(i * 14) + ordem}ms"></i>' for i in range(100))
 
 
-cabecalho(3, "Onde as mulheres morrem")
+cabecalho(4, "Onde as mulheres morrem")
 fh = dados.get("fora_hospital")
 if fh:
     st.markdown('<div class="res-txt">Cada pontinho é uma mulher que morreu de câncer (para cada cem). Os <b style="color:#5b2a55">roxos</b> morreram '
@@ -342,9 +472,9 @@ else:
     st.info("Este dado não está disponível agora.")
 
 
-# ---------- 4. o que falta ----------
+# ---------- 5. o que falta ----------
 
-cabecalho(4, "O que os dados públicos não mostram")
+cabecalho(5, "O que os dados públicos não mostram")
 st.markdown('<div class="res-txt">Faltam três informações que decidem muita coisa, e elas não são públicas: <b>quanto tempo a mulher espera</b> '
             'por mamografia e consulta, <b>quantos casos novos</b> surgem por ano e <b>em que fase</b> a doença é descoberta. '
             'Quem tem esses números é a Prefeitura e a Santa Casa.</div>', unsafe_allow_html=True)
@@ -355,6 +485,18 @@ dir_.markdown('<div class="res-pedido"><small>Pedir à Santa Casa</small><h4>Reg
               '<p>Casos novos por ano, fase em que a doença foi descoberta e tempo até o início do tratamento.</p></div>', unsafe_allow_html=True)
 st.markdown(acao("Gestão", "Pedir esses dois conjuntos de dados. Com eles, o MISM poderá mostrar <b>onde a mulher espera mais</b> e orientar onde reforçar."),
             unsafe_allow_html=True)
+
+with st.expander("Como este estudo foi calculado"):
+    st.markdown("""
+- **Dados:** internações por 7 cânceres (mama, colo do útero, colorretal, ovário, pele não melanoma, pulmão e tireoide) de mulheres que moram em Rio Claro, pelo SUS
+  (DATASUS, 2013 a 2026); mortes pelo Sistema de Informações sobre Mortalidade; mulheres por idade e por área pelo Censo 2022 (IBGE), repartido pelas áreas de saúde.
+- **Idade ajustada (seção 1):** para cada faixa de idade, a taxa de Rio Claro inteiro diz quantas internações esperar. Soma-se o esperado das mulheres de cada área e compara-se
+  com o que houve. A margem de erro de 90% é o intervalo exato de Poisson. Fio que cruza o 1,0 = diferença que pode ser acaso.
+- **Tendência (seção 2):** regressão de Poisson dos 13 anos de internações, descontando os meses que a fonte não tem (mês ausente não é zero). Mostra variação por ano com
+  margem de erro, sem prever o futuro.
+- **O que não mostra:** casos novos, pessoas (uma mulher pode ter várias internações), quem se trata por plano particular, nem as causas. Não compara hospitais.
+- **Reproduzir:** `python "MISM 1/calcular_denominadores_usf.py"` e `python "MISM 1/calcular_estudo_rio_claro.py"` (os testes ficam em `testes/`).
+""")
 
 st.markdown('<div class="res-nota" style="margin-top:30px">Fonte: internações do SUS (DATASUS), mortalidade (SIM) e população do Censo 2022 (IBGE). '
             'Conta internações, não pessoas: uma mulher pode ter mais de uma. Mostra onde as coisas acontecem, não explica por quê, '
