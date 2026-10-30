@@ -21,6 +21,7 @@ PAINEL = """<div id="wrap" style="position:relative;width:100%;height:560px;back
 <div id="leg" style="position:absolute;left:16px;bottom:14px;color:#e8dcef;font-size:13px;line-height:1.7">
  <div><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#ff8a4c;margin-right:8px"></span><span id="l1"></span></div>
  <div><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#d7b4ff;margin-right:8px"></span><span id="l2"></span></div>
+ <div id="l3" style="display:none"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;border:2px dashed #d7b4ff;box-sizing:border-box;margin-right:8px"></span><span id="l3t"></span></div>
  <div style="opacity:.65">o tamanho da bolha e a quantidade de pontos são o número de internações</div></div>
 <div id="tip" style="position:absolute;pointer-events:none;display:none;background:#fff;color:#2a1730;border-radius:10px;padding:8px 12px;font-size:13px;line-height:1.45;box-shadow:0 6px 20px rgba(0,0,0,.35);max-width:240px"></div></div>
 <script>
@@ -28,6 +29,7 @@ const D = __DADOS__;
 const cv = document.getElementById('c'), cx = cv.getContext('2d'), wrap = document.getElementById('wrap'), tip = document.getElementById('tip');
 document.getElementById('l1').textContent = 'moradoras de ' + D.centro.nome + ' que se trataram em outra cidade';
 document.getElementById('l2').textContent = 'mulheres de outras cidades atendidas em ' + D.centro.nome;
+if (D.cidades.some(c => c.regiao)) { document.getElementById('l3').style.display = 'block'; document.getElementById('l3t').textContent = D.rotulo_regiao || 'mesma região de saúde'; }
 const parado = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const COR_SAI = '#ff8a4c', COR_ENT = '#d7b4ff';
 let W = 0, H = 0, nos = [], fluxos = [], raio = () => 0;
@@ -77,6 +79,7 @@ function desenhar() {
   }));
   cx.globalCompositeOperation = 'source-over';
   nos.forEach(n => {
+    if (n.regiao) { cx.beginPath(); cx.setLineDash([4, 4]); cx.arc(n.x, n.y, n.r + 8, 0, 7); cx.lineWidth = 1.5; cx.strokeStyle = 'rgba(215,180,255,.85)'; cx.stroke(); cx.setLineDash([]); }
     cx.beginPath(); cx.arc(n.x, n.y, n.r, 0, 7); cx.fillStyle = 'rgba(35,16,40,.9)'; cx.fill();
     cx.lineWidth = 2.5; cx.strokeStyle = n.sai >= n.ent ? COR_SAI : COR_ENT; cx.stroke();
     cx.fillStyle = '#fff'; cx.font = '600 13px DM Sans, sans-serif'; cx.textAlign = 'center';
@@ -103,16 +106,18 @@ montar(); desenhar();
 </script>"""
 
 
-def dados_do_fluxo(info, posicoes, nome_cidade):
+def dados_do_fluxo(info, posicoes, nome_cidade, regiao=()):
     """Cidades (com direção e distância a partir de `nome_cidade`) para onde as moradoras vão e de onde vêm as mulheres de fora.
 
     `info`: o que `inteligencia.fluxo_da_cidade` devolve (destinos e origens). `posicoes`: `localizacao.carregar_localizacao`.
+    `regiao`: nomes das cidades da mesma região de saúde; elas ganham um contorno tracejado no desenho (campo `regiao`).
     Devolve None se faltar o fluxo, a tabela de posições ou o centro da cidade (nunca inventa um ponto)."""
     if not info or posicoes is None or len(posicoes) == 0:
         return None
     centro = loc._ponto(posicoes, ent.normalizar(nome_cidade))
     if centro is None:
         return None
+    da_regiao = {ent.normalizar(x) for x in regiao}
     cidades = {}
     for nome, n in list(info.get("destinos") or [])[:MAXIMO_POR_LADO]:
         if n >= MINIMO_SAIDA:
@@ -126,9 +131,9 @@ def dados_do_fluxo(info, posicoes, nome_cidade):
         if p is None:
             continue
         dx, dy = (p[1] - centro[1]) * math.cos(math.radians(centro[0])) * 111.32, (p[0] - centro[0]) * 110.57
-        c.update(km=round(math.hypot(dx, dy), 1), ang=round(math.atan2(dy, dx), 4))
+        c.update(km=round(math.hypot(dx, dy), 1), ang=round(math.atan2(dy, dx), 4), regiao=ent.normalizar(c["nome"]) in da_regiao)
         saida.append(c)
-    return {"centro": {"nome": nome_cidade}, "cidades": saida} if saida else None
+    return {"centro": {"nome": nome_cidade}, "cidades": saida, "rotulo_regiao": f"mesma região de saúde de {nome_cidade}"} if saida else None
 
 
 def html_do_fluxo(dados):

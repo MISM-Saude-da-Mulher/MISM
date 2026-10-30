@@ -52,6 +52,11 @@ checar("sem tabela de posições, sem o centro ou sem fluxo: None (a tela não d
        fa.dados_do_fluxo(info, None, "Rio Claro") is None and fa.dados_do_fluxo(info, pos.iloc[0:0], "Rio Claro") is None
        and fa.dados_do_fluxo(info, pos, "Cidade Sem Posição") is None and fa.dados_do_fluxo(None, pos, "Rio Claro") is None
        and fa.dados_do_fluxo({"destinos": [], "origens": []}, pos, "Rio Claro") is None)
+dr = fa.dados_do_fluxo(info, pos, "Rio Claro", regiao=("Santa Gertrudes", "Limeira"))
+cr = {c["nome"]: c for c in dr["cidades"]}
+checar("cidades da mesma região de saúde são marcadas (contorno tracejado); as outras não",
+       cr["Santa Gertrudes"]["regiao"] and cr["Limeira"]["regiao"] and not cr["Piracicaba"]["regiao"] and not any(c["regiao"] for c in d["cidades"]))
+checar("a legenda da região só aparece no desenho quando alguma cidade é da região", "l3" in fa.html_do_fluxo(dr) and dr["rotulo_regiao"].startswith("mesma região de saúde"))
 checar("vale para outra cidade como centro (Limeira)", fa.dados_do_fluxo({"destinos": [("Piracicaba", 10)], "origens": []}, pos, "Limeira")["centro"]["nome"] == "Limeira")
 
 html = fa.html_do_fluxo(d)

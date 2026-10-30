@@ -29,6 +29,9 @@ from estilo import CSS  # noqa: E402
 from navegacao import barra_de_navegacao  # noqa: E402
 
 ORIGEM, CODIGO, UF = "RIO_CLARO", 3543907, "SP"
+# Região de Saúde de Rio Claro: 6 municípios (Rio Claro e estes cinco). Fonte: Plano da Rede de Urgência e Emergência 2023 da Prefeitura
+# (saude-rioclaro.org.br/samu/plano rue 2023.pdf) e DRS X Piracicaba (saude.sp.gov.br).
+REGIAO_DE_SAUDE = ("Analândia", "Corumbataí", "Ipeúna", "Itirapina", "Santa Gertrudes")
 
 st.markdown(CSS, unsafe_allow_html=True)
 st.markdown("""<style>
@@ -265,7 +268,7 @@ with dir_:
 # ---------- 2. quem sai e quem chega: mapa animado de fluxos ----------
 
 cabecalho(2, "Quem sai da cidade e quem chega")
-fluxo = _seguro(lambda: fluxo_animado.dados_do_fluxo(cidade, dados.get("posicoes"), "Rio Claro"))
+fluxo = _seguro(lambda: fluxo_animado.dados_do_fluxo(cidade, dados.get("posicoes"), "Rio Claro", REGIAO_DE_SAUDE))
 esq, dir_ = st.columns(2, gap="large")
 with esq:
     if tabela is not None and not tabela.empty and pct_cidade is not None:
@@ -283,7 +286,12 @@ with dir_:
             p0, p1 = entradas[anos[0]] / meses[anos[0]], entradas[anos[-1]] / meses[anos[-1]]
             crescimento = (f" Em {anos[0]} eram {'menos de 1' if p0 < 1 else 'cerca de ' + n_fmt(p0)} internação por mês; em {anos[-1]}, cerca de {n_fmt(p1)} por mês.")
         cidades_txt = ", ".join(html.escape(o["nome"]) for o in origens[:4])
-        st.markdown(f'<div class="res-txt">Mulheres de outras cidades usam cada vez mais os hospitais de Rio Claro: <b>{cidades_txt}</b>.{crescimento}</div>'
+        regiao = {fluxo_animado.ent.normalizar(x) for x in REGIAO_DE_SAUDE}
+        total_fora = (cidade or {}).get("outras_cidades") or 0
+        da_regiao = sum(o["internacoes"] for o in origens if fluxo_animado.ent.normalizar(o["nome"]) in regiao)
+        regiao_txt = (f" <b>{n_fmt(100 * da_regiao / total_fora)}%</b> dessas internações vêm das outras cinco cidades da "
+                      "<b>Região de Saúde de Rio Claro</b> (contorno tracejado no mapa).") if total_fora and da_regiao else ""
+        st.markdown(f'<div class="res-txt">Mulheres de outras cidades usam cada vez mais os hospitais de Rio Claro: <b>{cidades_txt}</b>.{regiao_txt}{crescimento}</div>'
                     + acao("Saúde e Gestão", "Conversar com essas cidades sobre apoio: Rio Claro atende mulheres que moram em outros municípios."),
                     unsafe_allow_html=True)
 if fluxo:
