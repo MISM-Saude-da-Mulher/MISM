@@ -1666,31 +1666,11 @@ if aba == "Rede hospitalar":
                         st.plotly_chart(figura_o, width="stretch", theme=None, config=CONFIG_GRAFICO, key="fluxo_origens")
                 leitura("O que mostra", leitura_cidade_visao(info_cidade, nome_cidade, "aqui"))
 
-        # Por câncer (outubro/2026): a soma dos 7 cânceres esconde, por exemplo, o câncer de pele, que em Rio Claro é tratado
-        # em boa parte fora. Só descreve: conta internações, não pessoas, e não compara hospitais.
-        info_cancer = fluxo_cancer_cidade(ORIGEM, cidade["codigo_ibge"])
-        if info_cancer is not None:
-            pergunta(f"Quais cânceres as moradoras de {nome_cidade} tratam fora, e onde?", "cidade",
-                     f"só moradoras de {html.escape(nome_cidade)}, cada câncer separado, todos os anos")
-            tab_c = info_cancer["tabela"]
-            st.dataframe(pd.DataFrame({
-                "Câncer": tab_c["doenca"],
-                "Internações de moradoras": tab_c["moradoras"],
-                "Na própria cidade": tab_c["na_cidade"],
-                "Em outras cidades": tab_c["fora"],
-                "% fora": [f"{formatar_numero(v, 1)}%" if pd.notna(v) else "poucos casos" for v in tab_c["pct_fora"]],
-                "Cidade que mais recebeu": [f"{d} ({formatar_numero(n)})" if n else "—"
-                                            for d, n in zip(tab_c["destino"], tab_c["n_destino"])],
-                "Hospital mais frequente fora": [f"{h} ({formatar_numero(n)})" if n else "—"
-                                                 for h, n in zip(tab_c["hospital"], tab_c["n_hospital"])],
-            }), width="stretch", hide_index=True,
-                column_config={"Internações de moradoras": st.column_config.NumberColumn(format="%d"),
-                               "Na própria cidade": st.column_config.NumberColumn(format="%d"),
-                               "Em outras cidades": st.column_config.NumberColumn(format="%d")})
-            if info_cancer["sem_hospital"]:
-                st.caption(f"Outras {formatar_numero(info_cancer['sem_hospital'])} internações de moradoras ficaram fora desta "
-                           "conta por não trazerem o município do hospital.")
-            leitura("O que mostra", leitura_fluxo_por_cancer(info_cancer, nome_cidade))
+        # O detalhe por tipo de câncer (quais cânceres as moradoras tratam fora, e onde) mudou de lugar a pedido do autor (30/10/2026):
+        # agora está na página "O que os dados mostram" (paginas/rio_claro.py), que conta a história de Rio Claro.
+        if nome_cidade == "Rio Claro":
+            st.caption("O detalhe por tipo de câncer (quais cânceres as moradoras tratam fora, e onde) está na página **O que os dados mostram**, "
+                       "no botão do topo.")
         st.markdown("---")
 
 

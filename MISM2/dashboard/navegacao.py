@@ -21,9 +21,9 @@ DESTINOS = [
 if os.path.exists(os.path.join(AQUI, "..", "..", "paginas", "mapa.py")):
     DESTINOS.append(("mapa", "🗺️ Mapa de Rio Claro", "paginas/mapa.py", "/mapa"))
 
-# Resumo de uma página para a Secretaria da Mulher (paginas/resumo.py): só existe no site unificado; vem primeiro, para ser a mais fácil de achar.
-if os.path.exists(os.path.join(AQUI, "..", "..", "paginas", "resumo.py")):
-    DESTINOS.insert(0, ("resumo", "📋 Resumo para a Secretaria da Mulher", "paginas/resumo.py", "/resumo"))
+# Página para gestores (paginas/rio_claro.py): o que os dados de Rio Claro mostram e o que fazer: só existe no site unificado; vem primeiro, para ser a mais fácil de achar.
+if os.path.exists(os.path.join(AQUI, "..", "..", "paginas", "rio_claro.py")):
+    DESTINOS.insert(0, ("rio_claro", "📍 O que os dados mostram", "paginas/rio_claro.py", "/dados"))
 
 
 def _ir_ao_inicio():
