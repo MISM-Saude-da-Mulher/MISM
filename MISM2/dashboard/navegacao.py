@@ -21,6 +21,10 @@ DESTINOS = [
 if os.path.exists(os.path.join(AQUI, "..", "..", "paginas", "mapa.py")):
     DESTINOS.append(("mapa", "🗺️ Mapa de Rio Claro", "paginas/mapa.py", "/mapa"))
 
+# Resumo de uma página para a Secretaria da Mulher (paginas/resumo.py): só existe no site unificado; vem primeiro, para ser a mais fácil de achar.
+if os.path.exists(os.path.join(AQUI, "..", "..", "paginas", "resumo.py")):
+    DESTINOS.insert(0, ("resumo", "📋 Resumo para a Secretaria da Mulher", "paginas/resumo.py", "/resumo"))
+
 
 def _ir_ao_inicio():
     st.session_state["aba"] = "Panorama"
