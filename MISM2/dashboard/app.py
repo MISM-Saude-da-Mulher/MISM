@@ -451,6 +451,12 @@ with caixa_apoio:
             st.page_link("paginas/mapa.py", label="Mapa de Rio Claro")
         except Exception:  # Streamlit antigo, sem page_link
             st.markdown('<a href="/mapa" target="_self">Mapa de Rio Claro</a>', unsafe_allow_html=True)
+    # Estudo de Rio Claro (paginas/rio_claro.py): o que os dados mostram e o que fazer; só existe no site unificado.
+    if os.path.exists(os.path.join(os.path.dirname(__file__), "..", "..", "paginas", "rio_claro.py")):
+        try:
+            st.page_link("paginas/rio_claro.py", label="Estudo de Rio Claro")
+        except Exception:  # Streamlit antigo, sem page_link
+            st.markdown('<a href="/estudo" target="_self">Estudo de Rio Claro</a>', unsafe_allow_html=True)
 
 if resumo.empty:
     st.info(f"Ainda não há internações registradas para {nome_cidade}.")
