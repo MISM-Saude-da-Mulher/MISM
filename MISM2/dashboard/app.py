@@ -1895,7 +1895,7 @@ if aba == "Método":
   ela aconteceu.
 - **Meses que a fonte não oferece:** o DATASUS não disponibiliza todos os meses desde 2013 (2018 tem só 6) e o ano mais recente só tem os meses já publicados.
   Conferimos duas vezes, nos arquivos e na própria fonte: esses dados não existem para recuperar. Mês ausente não
-  é zero e ano incompleto não é ano normal: para comparar anos, o Escudo usa a média dos meses disponíveis × 12
+  é zero e ano incompleto não é ano normal: para comparar anos, o MISM usa a média dos meses disponíveis × 12
   (marcador vazado no gráfico); os totais do período são o que foi registrado.
 - **Linha cinza (Estado de SP):** a série do Estado redimensionada para o tamanho de {nome_cidade}. Compara o
   *ritmo*, não o volume. O Estado conta o **atendimento nos hospitais de SP**, e por isso inclui mulheres que
@@ -1905,8 +1905,40 @@ if aba == "Método":
 - **Projeção de tendência:** a reta histórica prolongada, com a faixa onde o valor deve cair em 9 de cada 10
   cenários se o passado se repetir, e um teste de acerto em anos já conhecidos. Não é "IA preditiva" nem
   previsão clínica. Óbitos não são projetados: são poucos por ano.
-- **Uma fonte por cidade:** se o banco tiver a mesma internação vinda de duas fontes, o Escudo usa só uma.
+- **Uma fonte por cidade:** se o banco tiver a mesma internação vinda de duas fontes, o MISM usa só uma.
 
-**O que estes dados não permitem responder:** causas, incidência (casos novos), orçamento ideal, efeito de uma
-política, e — até a população do IBGE entrar no banco — comparação justa entre cidades de tamanhos diferentes.
+**O que estes dados não permitem responder:** causas, incidência (casos novos), orçamento ideal e efeito de uma
+política. Para comparar cidades de tamanhos diferentes, use a taxa por 100 mil mulheres (população do Censo 2022):
+ela continua sendo taxa de internações, não de casos novos.
+""")
+
+    if ORIGEM == "RIO_CLARO":
+        pergunta("Perguntas que os dados levantam para a Secretaria de Saúde de Rio Claro")
+        st.markdown("""
+Os números abaixo foram conferidos nos dados do MISM em outubro de 2026. Eles **apontam onde perguntar; não
+explicam o porquê**. Internação não é caso novo, e o SIH só enxerga hospitais de São Paulo.
+
+- **Câncer de pele não melanoma é tratado, em boa parte, fora da cidade.** De cada 100 internações de moradoras por
+  esse câncer, 56 foram em unidades de outros municípios, sobretudo os ambulatórios de especialidades (AME) de
+  Piracicaba e de Santa Bárbara d'Oeste. Nos demais cânceres a parcela fica entre 4 e 14 (tireoide: 31).
+  *Pergunta:* onde essa cirurgia poderia ser feita em Rio Claro?
+- **A Santa Casa atende cada vez mais mulheres de outras cidades.** As internações por câncer de moradoras de outras
+  cidades de SP, nos hospitais de Rio Claro, passaram de cerca de 0,6 por mês (2013) para cerca de 5,5 por mês (2025).
+  Santa Gertrudes, Itirapina, Ipeúna, Analândia e Corumbataí são as que mais enviam.
+  *Pergunta:* existe pactuação com essas cidades?
+- **Onde as mulheres morrem de câncer.** Pelo SIM (2013–2025), 66,6% morreram em hospital (Estado de SP: 86,4%),
+  18,2% em outros estabelecimentos de saúde (4,7%) e 13,7% em casa (8,2%).
+  *Pergunta:* o que explica a diferença: cuidado paliativo, unidades de pronto atendimento ou forma de registro?
+- **Entrada pela urgência.** A parcela de internações que entram pela urgência é maior que a do Estado em todos os
+  cânceres (colo do útero: 65% contra 48%; pulmão: 86% contra 70%; mama: 37% contra 31%). Pode refletir a porta de
+  entrada do hospital, e não o momento do diagnóstico.
+- **Leitos de oncologia.** O CNES registra 3 leitos de oncologia em 2013 e em 2025, enquanto as internações por câncer
+  nos hospitais da cidade passaram de cerca de 7 por mês para cerca de 23 por mês. A mulher também usa leitos clínicos
+  e cirúrgicos, então isto não prova falta de leito. *Pergunta:* qual é a ocupação real?
+- **Mamografia.** Rio Claro tem 11 mamógrafos cadastrados no CNES (4 pelo SUS), cerca de 10 por 100 mil mulheres, acima
+  da mediana de cidades de porte parecido (cerca de 7). O CNES não mostra agenda nem fila.
+
+**O que os dados públicos não mostram e a Prefeitura ou a Santa Casa têm:** o registro hospitalar de câncer (casos
+novos, estadiamento, tempo até o tratamento) e a fila e a espera da regulação (consultas, exames, mamografia).
+Com esses dois, o MISM poderia responder onde a mulher espera mais.
 """)
