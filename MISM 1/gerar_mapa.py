@@ -14,6 +14,22 @@ MUNICIPIO_GEOJSON_PATH = RAIZ_PROJETO / "dados" / "referencia" / "municipio_rio_
 HTML_OUTPUT_PATH = RAIZ_PROJETO / "saidas" / "mapa_rio_claro_saude_mulher.html"
 PARQUET_AIH = RAIZ_PROJETO.parent / "dados_parquet" / "aih" / "aih_cancer_mulheres.parquet"
 PARQUET_GEO = RAIZ_PROJETO.parent / "dados_parquet" / "aih" / "aih_rio_claro_geo.parquet"
+DENOMINADORES_CSV = RAIZ_PROJETO / "dados" / "referencia" / "mulheres_por_area_usf.csv"
+
+# Taxa por 10 mil mulheres (novembro/2026): a contagem de internações acompanha o tamanho da área; a taxa divide pelas mulheres que
+# moram nela (Censo 2022, IBGE, por setor censitário; ver calcular_denominadores_usf.py). É taxa BRUTA de internações (sem ajuste por
+# idade), não incidência de câncer. Só vale sem filtros e com casos e mulheres suficientes.
+MINIMO_CASOS_TAXA = 20   # com menos que isto a taxa oscila demais (10 casos = erro de ±30% só pelo acaso)
+MINIMO_MULHERES_TAXA = 1000
+
+
+def carregar_denominadores():
+    """{área de USF: {"mulheres", "mulheres40", "domicilios"}} do Censo 2022; {} se o arquivo não existe (o mapa só mostra contagens)."""
+    if not DENOMINADORES_CSV.exists():
+        return {}
+    tabela = pd.read_csv(DENOMINADORES_CSV, sep=";", encoding="utf-8")
+    return {str(r.area_usf): {"mulheres": int(r.mulheres), "mulheres40": int(r.mulheres_40_mais), "domicilios": int(r.domicilios)}
+            for r in tabela.itertuples(index=False)}
 
 
 def texto(v, default=""):
@@ -185,6 +201,17 @@ def gerar_html(por_caso=None):
                             f"ao filtrar por ano ou faixa etária, os totais podem ficar abaixo do real"
                             + (f" ({n_ocultos} internações ficam fora dos totais)." if n_ocultos else "."))
     json_areas_ocultas = json.dumps(areas_ocultas, ensure_ascii=False).replace("</", "<\\/")
+    denominadores = carregar_denominadores()
+    json_denominadores = json.dumps(denominadores, ensure_ascii=False).replace("</", "<\\/")
+    seletor_taxa = ""
+    if denominadores:
+        seletor_taxa = f"""
+                <label for="modoRanking" style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:4px;">Ordenar e colorir as áreas por</label>
+                <select id="modoRanking" onchange="mudarModo(this.value)" style="width:100%;background:rgba(255,255,255,0.05);color:#fff;border:1px solid var(--border-glass);border-radius:var(--radius-sm);padding:6px 8px;font-size:12px;margin-bottom:6px;">
+                    <option value="casos" style="color:#000">Número de internações</option>
+                    <option value="taxa" style="color:#000">Internações por 10 mil mulheres</option>
+                </select>
+                <p id="notaTaxa" style="display:none;font-size:11px;color:var(--text-muted);margin-bottom:10px;"></p>"""
     total_internacoes = len(records)
     idade_media = round(sum(r["idade"] for r in records if r["idade"] > 0) / max(1, sum(1 for r in records if r["idade"] > 0)), 1)
     custo_total = sum(r["valor"] for r in records)
@@ -806,7 +833,7 @@ def gerar_html(por_caso=None):
         </button>
     </div>
 
-    <div class="map-legend">
+    <div class="map-legend" id="mapLegend">
         <div class="map-legend-title">Casos por Bairro</div>
         <div class="legend-scale-item">
             <span class="legend-color-box" style="background: #881337;"></span>
@@ -964,6 +991,7 @@ def gerar_html(por_caso=None):
                     <i class="ph ph-buildings"></i>
                 </div>
 
+                {seletor_taxa}
                 <div class="search-box">
                     <i class="ph ph-magnifying-glass"></i>
                     <input type="text" id="bairroSearch" placeholder="Buscar área USF..." oninput="filtrarListaBairros(this.value)">
@@ -982,6 +1010,8 @@ def gerar_html(por_caso=None):
     <script>
         const rawData = {json_records};
         const areasOcultas = {json_areas_ocultas};
+        const denominadores = {json_denominadores};
+        const MIN_CASOS_TAXA = {MINIMO_CASOS_TAXA}, MIN_MULHERES_TAXA = {MINIMO_MULHERES_TAXA};
         const municipioGeoJSON = {json_municipio_geojson};
         const areasUSFGeoJSON = {json_usf_geojson};
 
@@ -990,6 +1020,10 @@ def gerar_html(por_caso=None):
         let filtroFaixaAtiva = 'todas';
         let buscaBairroTexto = '';
         let listaBairrosAtual = [];
+        let modoRanking = 'casos';        // 'casos' ou 'taxa' (internações por 10 mil mulheres)
+        let limitesTaxa = [];             // cortes dos 5 grupos de cor da taxa (quintis das áreas que têm taxa)
+        const legendaOriginal = document.getElementById('mapLegend').innerHTML;
+        const CORES_TAXA = ['#4ade80', '#facc15', '#f97316', '#e11d48', '#881337'];
         let areasLayer = null, heatLayer = null, clusterGroup = null, municipioLayer = null;
 
         const centerRC = [-22.4149, -47.5614];
@@ -1046,6 +1080,50 @@ def gerar_html(por_caso=None):
             if (filtroFaixaAtiva === '70mais' && id < 70) return false;
             return true;
         }}
+        function semFiltros() {{ return filtroDoencaAtivo === 'todas' && filtroAnoAtivo === 'todos' && filtroFaixaAtiva === 'todas'; }}
+        function fmtTaxa(t) {{ return Math.round(t).toLocaleString('pt-BR'); }}
+        // Taxa bruta de internações por 10 mil mulheres da área. Só sem filtros (o denominador é todas as mulheres da área) e com
+        // casos e mulheres suficientes; fora disso devolve null.
+        function taxaArea(nome, casos) {{
+            const d = denominadores[nome];
+            if (!d || !semFiltros() || casos < MIN_CASOS_TAXA || d.mulheres < MIN_MULHERES_TAXA) return null;
+            return casos / d.mulheres * 10000;
+        }}
+        function calcularLimitesTaxa(stats) {{
+            const t = Object.entries(stats).map(([n,s]) => taxaArea(n, s.casos)).filter(x => x !== null).sort((a,b) => a-b);
+            if (t.length < 5) return [];
+            return [0.2,0.4,0.6,0.8].map(p => t[Math.min(t.length-1, Math.floor(p*t.length))]);
+        }}
+        function getCorPorTaxa(t) {{
+            let i = 0; while (i < limitesTaxa.length && t >= limitesTaxa[i]) i++;
+            return CORES_TAXA[i];
+        }}
+        function motivoSemTaxa(nome, casos) {{
+            const d = denominadores[nome];
+            if (!d) return 'sem dado de população';
+            if (!semFiltros()) return 'só sem filtros';
+            if (d.mulheres < MIN_MULHERES_TAXA) return 'poucas mulheres na área';
+            if (casos < MIN_CASOS_TAXA) return 'menos de ' + MIN_CASOS_TAXA + ' casos';
+            return '';
+        }}
+        function mudarModo(v) {{ modoRanking = v; aplicarFiltros(); }}
+        function atualizarLegendaENota() {{
+            const leg = document.getElementById('mapLegend'), nota = document.getElementById('notaTaxa');
+            if (modoRanking === 'taxa') {{
+                const f = limitesTaxa.length === 4;
+                const faixas = f ? [
+                    'menos de ' + fmtTaxa(limitesTaxa[0]), fmtTaxa(limitesTaxa[0]) + ' a ' + fmtTaxa(limitesTaxa[1]), fmtTaxa(limitesTaxa[1]) + ' a ' + fmtTaxa(limitesTaxa[2]),
+                    fmtTaxa(limitesTaxa[2]) + ' a ' + fmtTaxa(limitesTaxa[3]), fmtTaxa(limitesTaxa[3]) + ' ou mais'] : [];
+                leg.innerHTML = '<div class="map-legend-title">Internações por 10 mil mulheres</div>' +
+                    (f ? faixas.map((txt,i) => '<div class="legend-scale-item"><span class="legend-color-box" style="background:' + CORES_TAXA[i] + ';"></span><span>' + txt + '</span></div>').reverse().join('') : '') +
+                    '<div class="legend-scale-item"><span class="legend-color-box" style="background:#475569; opacity:0.6;"></span><span>sem taxa (filtro, poucos casos ou poucas mulheres)</span></div>';
+                nota.style.display = 'block';
+                nota.textContent = 'Taxa bruta de internações do SIH/SUS (2021–2025) por 10 mil mulheres que moram na área (Censo 2022, IBGE). Não é incidência de câncer e não corrige a idade; só aparece para áreas com ' + MIN_CASOS_TAXA + ' ou mais casos. Cores: cinco grupos de áreas, do menor ao maior valor. Os totais exibidos podem ficar um pouco abaixo do real (regra de poucos casos). ' +
+                    (semFiltros() ? '' : 'Com filtro de doença, ano ou faixa etária a taxa não é calculada: volte a "Todos".');
+            }} else {{
+                leg.innerHTML = legendaOriginal; if (nota) nota.style.display = 'none';
+            }}
+        }}
         function getCorPorCasos(n) {{
             if (n >= 15) return '#881337'; if (n >= 10) return '#e11d48';
             if (n >= 6) return '#f97316'; if (n >= 3) return '#facc15';
@@ -1074,9 +1152,9 @@ def gerar_html(por_caso=None):
             listEl.innerHTML = '';
             const filtrados = listaBairrosAtual.filter(([nome]) => !buscaBairroTexto || nome.toLowerCase().includes(buscaBairroTexto));
             if (!filtrados.length) {{ listEl.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px;">Nenhuma área encontrada.</div>'; return; }}
-            filtrados.forEach(([nome,count]) => {{
+            filtrados.forEach(([nome,count,taxa]) => {{
                 const item=document.createElement('div'); item.className='bairro-item';
-                item.innerHTML='<span class="bairro-name" title="'+escapar(nome)+'">'+escapar(nome)+'</span><span class="bairro-count-badge">'+count+' '+(count===1?'caso':'casos')+'</span>';
+                item.innerHTML='<span class="bairro-name" title="'+escapar(nome)+'">'+escapar(nome)+'</span><span class="bairro-count-badge">'+count+' '+(count===1?'caso':'casos')+(taxa!=null?' · '+fmtTaxa(taxa)+'/10 mil':'')+'</span>';
                 item.onclick=()=>focarBairro(nome); listEl.appendChild(item);
             }});
         }}
@@ -1090,8 +1168,11 @@ def gerar_html(por_caso=None):
             const idade=stats && stats.idades.length ? (stats.idades.reduce((a,b)=>a+b,0)/stats.idades.length).toFixed(1) : '-';
             const anos=stats ? [...stats.anos].sort().join(', ') : '-';
             const custo=stats ? stats.custo : 0;
-            return '<div class="popup-card"><div class="popup-header"><span class="popup-tag">Área de Saúde (USF)</span><div class="popup-title">'+escapar(nome)+'</div></div>'+ 
-                '<div class="popup-row"><span class="popup-label">Total de internações:</span><span class="popup-value">'+n+'</span></div>'+ 
+            const d=denominadores[nome], taxa=taxaArea(nome,n);
+            const linhasTaxa = d ? '<div class="popup-row"><span class="popup-label">Mulheres na área (Censo 2022):</span><span class="popup-value">'+d.mulheres.toLocaleString('pt-BR')+'</span></div>'+
+                '<div class="popup-row"><span class="popup-label">Internações por 10 mil mulheres:</span><span class="popup-value">'+(taxa!==null ? fmtTaxa(taxa) : '— ('+motivoSemTaxa(nome,n)+')')+'</span></div>' : '';
+            return '<div class="popup-card"><div class="popup-header"><span class="popup-tag">Área de Saúde (USF)</span><div class="popup-title">'+escapar(nome)+'</div></div>'+
+                '<div class="popup-row"><span class="popup-label">Total de internações:</span><span class="popup-value">'+n+'</span></div>'+ linhasTaxa +
                 '<div class="popup-row"><span class="popup-label">Participação no filtro:</span><span class="popup-value">'+pct+'%</span></div>'+ 
                 '<div class="popup-row"><span class="popup-label">Média de idade:</span><span class="popup-value">'+idade+' anos</span></div>'+ 
                 '<div class="popup-row"><span class="popup-label">Anos registrados:</span><span class="popup-value">'+escapar(anos)+'</span></div>'+ 
@@ -1102,9 +1183,15 @@ def gerar_html(por_caso=None):
             const stats={{}};
             dados.forEach(d=>{{ const a=d.area_usf || 'NÃO CLASSIFICADO'; if(!stats[a]) stats[a]={{casos:0,idades:[],custo:0,anos:new Set()}}; stats[a].casos++; if(d.idade>0)stats[a].idades.push(d.idade); stats[a].custo+=d.valor; stats[a].anos.add(d.ano); }});
             const total=dados.length || 1;
+            limitesTaxa = calcularLimitesTaxa(stats); atualizarLegendaENota();
             areasLayer=L.geoJSON(areasUSFGeoJSON, {{
-                style: feature => {{ const n=stats[nomeArea(feature)]?.casos || 0; return {{color:n?'#ffffff':'#64748b',weight:n?1.5:0.8,opacity:n?0.85:0.4,fillColor:getCorPorCasos(n),fillOpacity:n?0.55:0.12}}; }},
-                onEachFeature: (feature,layer) => {{ const nome=nomeArea(feature); layer.bindTooltip('<strong>'+escapar(nome)+'</strong><br><span style="color:#fb7185">'+(stats[nome]?.casos ? stats[nome].casos+' casos' : (areasOcultas.includes(nome) ? 'menos de 5 casos' : '0 casos'))+'</span>',{{sticky:true}}); layer.bindPopup(popupArea(nome,stats[nome],total)); layer.on({{mouseover:e=>e.target.setStyle({{weight:3,color:'#fb7185',fillOpacity:0.82}}),mouseout:e=>areasLayer.resetStyle(e.target)}}); }}
+                style: feature => {{
+                    const nome=nomeArea(feature), n=stats[nome]?.casos || 0;
+                    let cor=getCorPorCasos(n), opac=n?0.55:0.12;
+                    if (modoRanking==='taxa') {{ const t=taxaArea(nome,n); if (t===null) {{ cor='#475569'; opac=n?0.3:0.12; }} else {{ cor=getCorPorTaxa(t); opac=0.6; }} }}
+                    return {{color:n?'#ffffff':'#64748b',weight:n?1.5:0.8,opacity:n?0.85:0.4,fillColor:cor,fillOpacity:opac}};
+                }},
+                onEachFeature: (feature,layer) => {{ const nome=nomeArea(feature); const tx=taxaArea(nome,stats[nome]?.casos||0); layer.bindTooltip('<strong>'+escapar(nome)+'</strong><br><span style="color:#fb7185">'+(stats[nome]?.casos ? stats[nome].casos+' casos' : (areasOcultas.includes(nome) ? 'menos de 5 casos' : '0 casos'))+(tx!==null ? ' · '+fmtTaxa(tx)+' por 10 mil mulheres' : '')+'</span>',{{sticky:true}}); layer.bindPopup(popupArea(nome,stats[nome],total)); layer.on({{mouseover:e=>e.target.setStyle({{weight:3,color:'#fb7185',fillOpacity:0.82}}),mouseout:e=>areasLayer.resetStyle(e.target)}}); }}
             }});
             const gruposCoord=new Map();
             dados.forEach(d=>{{const key=d.lat.toFixed(6)+','+d.lng.toFixed(6);if(!gruposCoord.has(key))gruposCoord.set(key,[]);gruposCoord.get(key).push(d);}});
@@ -1118,7 +1205,8 @@ def gerar_html(por_caso=None):
                 marker.bindPopup('<div class="popup-card"><div class="popup-header"><span class="popup-tag">Casos agrupados por área</span><div class="popup-title">'+n+' '+(n===1?'caso':'casos')+'</div></div><div class="popup-row"><span class="popup-label">Área USF:</span><span class="popup-value">'+escapar(areas.join(', ')||'Não classificado')+'</span></div><div class="popup-row"><span class="popup-label">Doença(s):</span><span class="popup-value">'+escapar(doencas)+'</span></div></div>');
                 clusterGroup.addLayer(marker);
             }});
-            const ranking=Object.entries(stats).sort((a,b)=>b[1].casos-a[1].casos).map(([n,s])=>[n,s.casos]);
+            const ranking=Object.entries(stats).map(([n,s])=>[n,s.casos,taxaArea(n,s.casos)]);
+            ranking.sort((a,b)=> modoRanking==='taxa' ? ((b[2]??-1)-(a[2]??-1)) || (b[1]-a[1]) : (b[1]-a[1]));
             listaBairrosAtual=ranking; renderizarListaBairros();
             if(document.getElementById('toggleBairros').checked) areasLayer.addTo(map);
             if(document.getElementById('toggleClusters').checked) clusterGroup.addTo(map);

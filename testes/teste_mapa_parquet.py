@@ -86,6 +86,48 @@ detalhado = registros_do_html(html_detalhado)
 checar("a opção 'Casos detalhados' mostra todas as internações públicas do SIH/SUS", len(detalhado) == len(geo) and "base pública do DATASUS" in html_detalhado)
 checar("sem a opção, o padrão continua sendo os totais por área", len(registros_do_html(gerar_mapa.gerar_html(por_caso=False))) == len(registros))
 
+# ---- 5. taxa por 10 mil mulheres (denominadores do Censo 2022 por área de USF) ----
+den = gerar_mapa.carregar_denominadores()
+nomes_usf = {f["properties"]["nome"] for f in json.load(open(gerar_mapa.USF_GEOJSON_PATH, encoding="utf-8"))["features"]
+             if f["geometry"]["type"] == "Polygon" and f["properties"].get("nome")}
+checar("há denominadores para todas as áreas de USF do mapa (mesmos nomes)", set(den) == nomes_usf and len(den) >= 20)
+checar("mulheres por área: total entre 90 mil e 110 mil (Rio Claro tem cerca de 104 mil) e 40+ sempre menor que o total",
+       90_000 <= sum(d["mulheres"] for d in den.values()) <= 110_000 and all(d["mulheres40"] < d["mulheres"] for d in den.values()))
+checar("o mapa traz o seletor 'Ordenar e colorir' e os denominadores, e o padrão continua sendo a contagem",
+       'id="modoRanking"' in html and "const denominadores = {" in html and "let modoRanking = 'casos'" in html)
+checar("os denominadores embutidos são só totais por área (nenhum endereço nem pessoa)",
+       set(re.search(r"const denominadores = (\{.*?\});\n", html, re.S).group(1) and
+           json.loads(re.search(r"const denominadores = (\{.*?\});\n", html, re.S).group(1))) == set(den)
+       and all(set(v) == {"mulheres", "mulheres40", "domicilios"} for v in den.values()))
+checar("a taxa só vale com 20 casos ou mais e 1.000 mulheres ou mais, e só sem filtros",
+       "MIN_CASOS_TAXA = 20" in html and "MIN_MULHERES_TAXA = 1000" in html and "!semFiltros()" in html)
+checar("o mapa avisa que a taxa é bruta, sem ajuste de idade, e não é incidência", "Não é incidência de câncer e não corrige a idade" in html)
+arquivo_certo = gerar_mapa.DENOMINADORES_CSV
+gerar_mapa.DENOMINADORES_CSV = pathlib.Path("/nao/existe/mulheres_por_area_usf.csv")
+sem_den = gerar_mapa.gerar_html(por_caso=False)
+gerar_mapa.DENOMINADORES_CSV = arquivo_certo
+checar("sem o arquivo de denominadores o mapa continua igual (só contagens, sem seletor)",
+       'id="modoRanking"' not in sem_den and "const denominadores = {};" in sem_den and len(registros_do_html(sem_den)) == len(registros))
+
+# a taxa calculada no navegador é a mesma que a conta direta: casos / mulheres * 10 000 (conferência com um caso conhecido)
+casos_bv = sum(1 for r in registros if r["area_usf"] == "Bela Vista, Cidade Nova")
+checar("conta de exemplo: Bela Vista/Cidade Nova tem casos visíveis e mulheres no denominador, e a taxa fica em faixa plausível (50 a 300 por 10 mil)",
+       casos_bv >= 20 and 50 <= casos_bv / den["Bela Vista, Cidade Nova"]["mulheres"] * 10_000 <= 300)
+
+# o JavaScript do mapa continua válido (se o Node estiver instalado)
+import shutil
+import subprocess
+import tempfile
+if shutil.which("node"):
+    miolo = re.findall(r"<script>(.*?)</script>", html, re.S)[-1]
+    with tempfile.TemporaryDirectory() as tmp:
+        js = pathlib.Path(tmp) / "mapa.js"
+        js.write_text(miolo, encoding="utf-8")
+        resultado = subprocess.run(["node", "--check", str(js)], capture_output=True, text=True)
+    checar("o JavaScript do mapa passa na checagem de sintaxe do Node", resultado.returncode == 0)
+else:
+    print("(Node não instalado: pulei a checagem de sintaxe do JavaScript)")
+
 if falhas:
     print(f"\n{len(falhas)} falha(s).")
     sys.exit(1)
