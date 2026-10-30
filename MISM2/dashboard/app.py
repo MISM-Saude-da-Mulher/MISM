@@ -1667,9 +1667,9 @@ if aba == "Rede hospitalar":
                 leitura("O que mostra", leitura_cidade_visao(info_cidade, nome_cidade, "aqui"))
 
         # O detalhe por tipo de câncer (quais cânceres as moradoras tratam fora, e onde) mudou de lugar a pedido do autor (30/10/2026):
-        # agora está na página "O que os dados mostram" (paginas/rio_claro.py), que conta a história de Rio Claro.
+        # agora está na página "Estudo de Rio Claro" (paginas/rio_claro.py), que conta a história de Rio Claro.
         if nome_cidade == "Rio Claro":
-            st.caption("O detalhe por tipo de câncer (quais cânceres as moradoras tratam fora, e onde) está na página **O que os dados mostram**, "
+            st.caption("O detalhe por tipo de câncer (quais cânceres as moradoras tratam fora, e onde) está na página **Estudo de Rio Claro**, "
                        "no botão do topo.")
         st.markdown("---")
 

@@ -1,4 +1,4 @@
-"""O que os dados mostram: uma página para gestores, em português simples, com o que os dados de Rio Claro revelam e o que fazer.
+"""Estudo de Rio Claro: uma página para gestores, em português simples, com o que os dados de Rio Claro revelam e o que fazer.
 
 Nada aqui é digitado: os números vêm do banco e dos arquivos do MISM (as mesmas funções das outras abas), então a página muda quando os dados mudam.
 Os visuais não são gráficos de barras: um mapa animado de fluxos (para onde vão e de onde vêm as mulheres), um mapa das áreas de saúde

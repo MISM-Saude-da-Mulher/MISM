@@ -23,7 +23,7 @@ if os.path.exists(os.path.join(AQUI, "..", "..", "paginas", "mapa.py")):
 
 # Página para gestores (paginas/rio_claro.py): o que os dados de Rio Claro mostram e o que fazer: só existe no site unificado; vem primeiro, para ser a mais fácil de achar.
 if os.path.exists(os.path.join(AQUI, "..", "..", "paginas", "rio_claro.py")):
-    DESTINOS.insert(0, ("rio_claro", "📍 O que os dados mostram", "paginas/rio_claro.py", "/dados"))
+    DESTINOS.insert(0, ("rio_claro", "📍 Estudo de Rio Claro", "paginas/rio_claro.py", "/estudo"))
 
 
 def _ir_ao_inicio():

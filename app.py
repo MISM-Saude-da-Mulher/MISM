@@ -41,7 +41,7 @@ apoio = st.Page(f"{D}/pages/apoio.py", title="Apoio à mulher", url_path="apoio"
 onde = st.Page(f"{D}/pages/onde_ser_atendida.py", title="Onde ser atendida", url_path="onde_ser_atendida")
 hospitais = st.Page(f"{D}/pages/hospitais_cancer.py", title="Hospitais de câncer", url_path="hospitais_cancer")
 mapa = st.Page("paginas/mapa.py", title="Mapa de Rio Claro", icon="🗺️", url_path="mapa")
-dados_rc = st.Page("paginas/rio_claro.py", title="O que os dados mostram", icon="📍", url_path="dados")
+dados_rc = st.Page("paginas/rio_claro.py", title="Estudo de Rio Claro", icon="📍", url_path="estudo")
 
 # O MISM2 é a tela inicial; a navegação entre as páginas é a barra do próprio MISM2 (a do Streamlit fica escondida).
 pagina = st.navigation([central, dados_rc, apoio, onde, hospitais, mapa], position="hidden")
