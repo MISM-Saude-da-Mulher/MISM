@@ -3,6 +3,7 @@
 O mapa continua sendo o HTML que o projeto do grupo já gera (MISM 1/gerar_mapa.py); aqui ele só é embutido na página,
 com a mesma barra de navegação das outras páginas do MISM2.
 """
+import hashlib
 import sys
 from pathlib import Path
 
@@ -32,8 +33,13 @@ st.markdown(
 )
 
 
+# A chave do cache inclui o conteúdo do gerador: sem isso, depois de uma atualização do gerador (por exemplo, o painel que
+# começa fechado no celular) o servidor continuava entregando o mapa antigo guardado, até alguém reiniciar o app.
+VERSAO_DO_GERADOR = hashlib.md5(Path(gerar_mapa.__file__).read_bytes()).hexdigest()
+
+
 @st.cache_data(show_spinner="Montando o mapa…")
-def html_do_mapa(por_caso):
+def html_do_mapa(por_caso, versao_do_gerador):
     return gerar_mapa.gerar_html(por_caso=por_caso)
 
 
@@ -69,4 +75,4 @@ with st.expander("📮 Qual é a minha área de USF? Consulte pelo CEP"):
 # Os dados são do SIH/SUS (DATASUS, base pública): as duas visões estão a um clique. Padrão: totais por área de USF.
 visao = st.radio("Visão do mapa", ["Totais por área de USF", "Casos detalhados (SIH/SUS, base pública)"], horizontal=True,
                  key="mapa_visao", label_visibility="collapsed")
-components.html(html_do_mapa(visao.startswith("Casos")), height=820, scrolling=False)
+components.html(html_do_mapa(visao.startswith("Casos"), VERSAO_DO_GERADOR), height=820, scrolling=False)
