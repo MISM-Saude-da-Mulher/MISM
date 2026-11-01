@@ -304,7 +304,13 @@ def gerar_html(por_caso=None):
         }}
 
         .sidebar.collapsed {{
-            transform: translateX(-470px);
+            /* some por inteiro qualquer que seja a largura (no celular a largura é a da tela menos 32 px; os 470 px fixos deixavam o painel e o botão de abrir fora de vista) */
+            transform: translateX(calc(-100% - 16px));
+        }}
+
+        /* Celular: o painel começa fechado (o JS fecha) e a legenda fica pequena, para o mapa aparecer. */
+        @media (max-width: 700px) {{
+            .map-legend {{ bottom: 12px !important; right: 8px !important; padding: 8px 10px !important; min-width: 0 !important; max-width: 46vw; }}
         }}
 
         .sidebar-header {{
@@ -1052,6 +1058,8 @@ def gerar_html(por_caso=None):
         municipioLayer = L.geoJSON(municipioGeoJSON, {{ style: {{ color: '#f43f5e', weight: 2.5, dashArray: '6, 6', fillOpacity: 0 }} }}).addTo(map);
 
         function toggleSidebar() {{ document.getElementById('sidebar').classList.toggle('collapsed'); }}
+        // Celular: o painel de 450 px cobria o mapa inteiro. Começa fechado; o botão ao lado abre.
+        if (window.innerWidth <= 700) document.getElementById('sidebar').classList.add('collapsed');
         function filtrarDoenca(doenca, el) {{
             filtroDoencaAtivo = doenca;
             document.querySelectorAll('#filterDoenca .chip').forEach(c => c.classList.remove('active'));
