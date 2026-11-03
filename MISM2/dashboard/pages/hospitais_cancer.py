@@ -95,10 +95,7 @@ def centros(versao):
 
 
 def inicio():
-    st.markdown('<div style="background:#efe9f5;border-left:4px solid #5b2a55;border-radius:6px;padding:6px 12px;'
-                'margin:4px 0 10px;font-size:.95rem;color:#2a1730">📍 Você está em: <b>Hospitais habilitados em oncologia</b></div>',
-                unsafe_allow_html=True)
-    barra_de_navegacao("hospitais", chave_inicio="hc_inicio")
+    barra_de_navegacao("hospitais", chave_inicio="hc_inicio", onde="Hospitais habilitados em oncologia")
 
 
 def pergunta(texto, escopo):

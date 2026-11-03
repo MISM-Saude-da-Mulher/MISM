@@ -19,6 +19,7 @@ import hospitais_oncologia as hosp_onco
 from passeio import PARADAS, parada as passeio_parada
 from lia_rosto import img as rosto_lia
 from estilo import CSS
+from navegacao import botoes_das_paginas
 from identidade import regua_cobertura as regua_mism
 from inteligencia import (
     ranking_municipios,
@@ -437,38 +438,7 @@ with col_titulo:
 # Apoio à mulher (dashboard/pages/apoio.py): lâminas de apoio, separadas
 # deste estudo da doença. A única ligação é este botão vermelho (pedido
 # do autor); o estilo está em estilo.py ("botao_apoio").
-try:
-    caixa_apoio = st.container(key="botao_apoio")
-except TypeError:  # Streamlit antigo: sem key em container
-    caixa_apoio = st.container()
-with caixa_apoio:
-    try:
-        st.page_link("pages/apoio.py", label="Apoio à mulher")
-    except Exception:  # Streamlit antigo, sem page_link
-        st.markdown('<a href="/apoio" target="_self">Apoio à mulher</a>', unsafe_allow_html=True)
-    # Onde ser atendida (dashboard/pages/onde_ser_atendida.py): unidades de saúde da
-    # cidade pelo CNES. Link discreto (a página substitui a antiga "Rede local").
-    try:
-        st.page_link("pages/onde_ser_atendida.py", label="Onde ser atendida")
-    except Exception:  # Streamlit antigo, sem page_link
-        st.markdown('<a href="/onde_ser_atendida" target="_self">Onde ser atendida</a>', unsafe_allow_html=True)
-    # Hospitais de câncer (mapa e os mais próximos da cidade onde a mulher mora): mesmo grupo, uma casa só no painel.
-    try:
-        st.page_link("pages/hospitais_cancer.py", label="Hospitais de câncer")
-    except Exception:  # Streamlit antigo, sem page_link
-        st.markdown('<a href="/hospitais_cancer" target="_self">Hospitais de câncer</a>', unsafe_allow_html=True)
-    # Mapa de Rio Claro (do projeto do grupo): só existe no site unificado, onde há paginas/mapa.py na raiz.
-    if os.path.exists(os.path.join(os.path.dirname(__file__), "..", "..", "paginas", "mapa.py")):
-        try:
-            st.page_link("paginas/mapa.py", label="Mapa de Rio Claro")
-        except Exception:  # Streamlit antigo, sem page_link
-            st.markdown('<a href="/mapa" target="_self">Mapa de Rio Claro</a>', unsafe_allow_html=True)
-    # Estudo de Rio Claro (paginas/rio_claro.py): o que os dados mostram e o que fazer; só existe no site unificado.
-    if os.path.exists(os.path.join(os.path.dirname(__file__), "..", "..", "paginas", "rio_claro.py")):
-        try:
-            st.page_link("paginas/rio_claro.py", label="Estudo de Rio Claro")
-        except Exception:  # Streamlit antigo, sem page_link
-            st.markdown('<a href="/estudo" target="_self">Estudo de Rio Claro</a>', unsafe_allow_html=True)
+botoes_das_paginas(None)  # a mesma fileira de botões de todas as páginas (navegacao.py)
 
 if resumo.empty:
     st.info(f"Ainda não há internações registradas para {nome_cidade}.")

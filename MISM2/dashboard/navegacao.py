@@ -10,20 +10,18 @@ import streamlit as st
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 
+# Mesma ordem e mesmos rótulos da fileira de botões da página inicial (app.py): uma interface só em todas as páginas.
 DESTINOS = [
-    ("apoio", "💜 Apoio à mulher", "pages/apoio.py", "/apoio"),
-    ("onde", "📍 Onde ser atendida", "pages/onde_ser_atendida.py", "/onde_ser_atendida"),
-    ("hospitais", "🗺️ Hospitais de câncer", "pages/hospitais_cancer.py", "/hospitais_cancer"),
+    ("apoio", "Apoio à mulher", "pages/apoio.py", "/apoio"),
+    ("onde", "Onde ser atendida", "pages/onde_ser_atendida.py", "/onde_ser_atendida"),
+    ("hospitais", "Hospitais de câncer", "pages/hospitais_cancer.py", "/hospitais_cancer"),
 ]
 
-# No site unificado (MISM) existe a página do mapa do grupo (paginas/mapa.py, na raiz do site): vira mais um destino.
-# O MISM2 sozinho não tem essa página e segue com os três de sempre.
+# No site unificado (MISM) existem a página do mapa do grupo (paginas/mapa.py) e a dos gestores (paginas/rio_claro.py): entram no fim, como na página inicial.
 if os.path.exists(os.path.join(AQUI, "..", "..", "paginas", "mapa.py")):
-    DESTINOS.append(("mapa", "🗺️ Mapa de Rio Claro", "paginas/mapa.py", "/mapa"))
-
-# Página para gestores (paginas/rio_claro.py): o que os dados de Rio Claro mostram e o que fazer: só existe no site unificado; vem primeiro, para ser a mais fácil de achar.
+    DESTINOS.append(("mapa", "Mapa de Rio Claro", "paginas/mapa.py", "/mapa"))
 if os.path.exists(os.path.join(AQUI, "..", "..", "paginas", "rio_claro.py")):
-    DESTINOS.insert(0, ("rio_claro", "📍 Estudo de Rio Claro", "paginas/rio_claro.py", "/estudo"))
+    DESTINOS.append(("rio_claro", "Estudo de Rio Claro", "paginas/rio_claro.py", "/estudo"))
 
 
 def _ir_ao_inicio():
@@ -34,29 +32,36 @@ def _ir_ao_inicio():
         pass
 
 
-def barra_de_navegacao(atual, chave_inicio=None):
-    """Desenha a barra. `atual`: 'apoio', 'onde' ou 'hospitais' (marcada, sem link). `chave_inicio`: chave do botão Início;
-    None não desenha o Início (a página já tem o dela)."""
+def botoes_das_paginas(atual=None):
+    """A fileira de botões das páginas, igual em todas (a da página inicial). `atual`: a página aberta (marcada, sem link);
+    None na página inicial. Só o primeiro botão (Apoio à mulher) é vermelho; o estilo está em estilo.py ("botao_apoio")."""
     try:
-        caixa = st.container(key=f"barra_navegacao_{atual}")
+        caixa = st.container(key=f"botao_apoio_{atual or 'inicio'}")
     except TypeError:  # Streamlit antigo, sem key em container
         caixa = st.container()
     with caixa:
-        colunas = st.columns(len(DESTINOS) + (1 if chave_inicio else 0))
-        i = 0
-        if chave_inicio:
-            if colunas[0].button("🏠 Início", key=chave_inicio, width="stretch", help="Volta à página inicial (Panorama)."):
-                _ir_ao_inicio()
-            i = 1
         for chave, rotulo, pagina, url in DESTINOS:
-            with colunas[i]:
-                if chave == atual:
-                    st.markdown(f'<div class="nav-aqui">{rotulo}<small>você está aqui</small></div>', unsafe_allow_html=True)
-                else:
-                    try:
-                        st.page_link(pagina, label=rotulo, width="stretch")
-                    except TypeError:  # Streamlit sem width no page_link
-                        st.page_link(pagina, label=rotulo)
-                    except Exception:  # Streamlit antigo, sem page_link
-                        st.markdown(f'<a href="{url}" target="_self">{rotulo}</a>', unsafe_allow_html=True)
-            i += 1
+            if chave == atual:
+                st.markdown(f'<div class="nav-aqui">{rotulo}<small>você está aqui</small></div>', unsafe_allow_html=True)
+                continue
+            try:
+                st.page_link(pagina, label=rotulo)
+            except Exception:  # Streamlit antigo, sem page_link
+                st.markdown(f'<a href="{url}" target="_self">{rotulo}</a>', unsafe_allow_html=True)
+
+
+def barra_de_navegacao(atual, chave_inicio=None, onde=None):
+    """Topo padrão das páginas: a fileira de botões da página inicial e, logo abaixo, o botão Início ao lado da faixa
+    "Você está em" (como a linha das abas da página inicial). `chave_inicio`: chave do botão Início (None = a página já tem o dela).
+    `onde`: texto da faixa (None = sem faixa; a página desenha a sua)."""
+    botoes_das_paginas(atual)
+    if not (chave_inicio or onde):
+        return
+    col_onde, col_inicio = st.columns([5, 1], vertical_alignment="center")
+    if onde:
+        col_onde.markdown(f'<div class="escudo-voce-esta">📍 Você está em: <b>{onde}</b></div>', unsafe_allow_html=True)
+    if chave_inicio:
+        with col_inicio:
+            with st.container(key=f"botao_inicio_{atual}"):
+                if st.button("🏠 Início", key=chave_inicio, width="stretch", help="Volta à página inicial (Panorama)."):
+                    _ir_ao_inicio()

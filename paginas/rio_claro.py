@@ -108,13 +108,13 @@ st.markdown("""<style>
 .res-pontos p b { font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 1.9rem; color: #5b2a55; }
 @media (prefers-reduced-motion: reduce) { .res-mapa .pulsa, .res-grade i { animation: none; } }
 @media print {
-  [class*="st-key-barra_navegacao"], [data-testid="stToolbar"], [data-testid="stHeader"], header { display: none !important; }
+  [class*="st-key-barra_navegacao"], [class*="st-key-botao_apoio"], [class*="st-key-botao_inicio"], [data-testid="stToolbar"], [data-testid="stHeader"], header { display: none !important; }
   .res-cab, .res-acao, .res-pedido, .res-card { break-inside: avoid; }
 }
 </style>""", unsafe_allow_html=True)
 
 st.markdown('<div class="mism-marca"><div class="escudo-marca">MISM<span> · saúde da mulher</span></div></div>', unsafe_allow_html=True)
-barra_de_navegacao("rio_claro", chave_inicio="rio_claro_inicio")
+barra_de_navegacao("rio_claro", chave_inicio="rio_claro_inicio", onde="Estudo de Rio Claro")
 
 
 # ---------- dados (tudo vem do banco e dos arquivos do MISM; nada digitado) ----------
