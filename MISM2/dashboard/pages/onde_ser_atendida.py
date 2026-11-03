@@ -123,7 +123,7 @@ def internacoes_por_cnes(modificado):
 
 
 def inicio():
-    barra_de_navegacao("onde", chave_inicio="un_inicio", onde="Onde ser atendida")
+    barra_de_navegacao("onde", chave_inicio="un_inicio")
 
 
 def pergunta(texto, detalhe):

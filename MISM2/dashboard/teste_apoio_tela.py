@@ -66,7 +66,7 @@ checar("A. emergência (190, 180, 192) à vista na primeira tela, fora de qualqu
 checar("A. antes de escolher a situação não abre cartões de nenhum câncer (nada de mama por padrão)",
        'class="escudo-cartao' not in _txt_abertura and botao(at, "ir_carretas_mama") is None)
 checar("A. a primeira tela não usa a palavra interna 'porta'", " porta" not in _txt_abertura.split("</style>")[-1].lower())
-checar("A. faixa 'Você está em' mostra onde a mulher está", "Você está em" in _txt_abertura)
+checar("A. a fileira de botões marca o Apoio como 'você está aqui'", "Apoio à mulher<small>você está aqui</small>" in _txt_abertura)
 checar("A. contadores internos não ocupam a entrada de quem procura atendimento",
        not any(m.label in ("Caminhos de orientação", "Informações cadastradas", "Pedem confirmação")
                for m in at.metric))
@@ -528,8 +528,8 @@ checar("H. clicar abre as situações ('Ainda não fiz o exame'...'violência') 
 checar("H. a lista de assuntos NÃO traz 'Preciso de ajuda' (é uma área à parte)",
        not any("Preciso de ajuda" in str(r.options) and "Câncer de mama" in str(r.options) for r in at.radio))
 checar("H. já dentro, o botão avisa 'você está aqui'", "você está aqui" in botao(at, "apoio_ajuda_botao").label)
-checar("H. a faixa 'Você está em' diz 'Preciso de ajuda' (não 'Orientação por assunto')",
-       "Você está em: <b>Preciso de ajuda" in tudo_h)
+checar("H. o caminho aberto é o de ajuda (o botão 'Preciso de ajuda' já avisa 'você está aqui')",
+       at.session_state["ap_caminho"] == "ajuda")
 botao(at, "nav_apoio_caminho").click().run()
 checar("H. 'Orientação por assunto' volta aos assuntos (Câncer de mama...), sem ficar preso na ajuda",
        not erros(at) and at.session_state["ap_caminho"] != "ajuda" and "Câncer de mama" in str([r.options for r in at.radio]))

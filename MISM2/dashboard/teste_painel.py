@@ -812,7 +812,7 @@ def main():
            "De onde vêm as mulheres de outros estados" not in inv and "Como é o atendimento em um hospital" not in inv
            and "Qual câncer cresce mais rápido" not in rede and "A idade das mulheres internadas" not in rede
            and "se compara com outra cidade" not in rede)
-    checar("K. a faixa 'Você está em' nomeia a aba nova", "Rede hospitalar · onde as mulheres são atendidas" in rede)
+    checar("K. a aba nova existe no seletor de abas", "Rede hospitalar" in str([r.options for r in at.radio]))
 
     # ---- L. internações de um ano, mês a mês (Secretaria da Mulher): 2026 parcial, residência x hospital, sem dado != zero ----
     anos_original, periodo_original = inteligencia.anos_com_dados, inteligencia.internacoes_do_periodo

@@ -21,7 +21,7 @@ from navegacao import barra_de_navegacao  # noqa: E402
 
 st.markdown(CSS, unsafe_allow_html=True)
 st.markdown('<div class="escudo-marca">MISM · Mapa de Rio Claro</div>', unsafe_allow_html=True)
-barra_de_navegacao("mapa", chave_inicio="mapa_inicio", onde="Mapa de Rio Claro")
+barra_de_navegacao("mapa", chave_inicio="mapa_inicio")
 
 # O mapa ocupa a largura toda: tira só o respiro lateral desta aba (o topo segue igual ao das outras páginas).
 st.markdown(

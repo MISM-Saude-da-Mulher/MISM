@@ -114,7 +114,7 @@ st.markdown("""<style>
 </style>""", unsafe_allow_html=True)
 
 st.markdown('<div class="mism-marca"><div class="escudo-marca">MISM<span> · saúde da mulher</span></div></div>', unsafe_allow_html=True)
-barra_de_navegacao("rio_claro", chave_inicio="rio_claro_inicio", onde="Estudo de Rio Claro")
+barra_de_navegacao("rio_claro", chave_inicio="rio_claro_inicio")
 
 
 # ---------- dados (tudo vem do banco e dos arquivos do MISM; nada digitado) ----------

@@ -50,18 +50,14 @@ def botoes_das_paginas(atual=None):
                 st.markdown(f'<a href="{url}" target="_self">{rotulo}</a>', unsafe_allow_html=True)
 
 
-def barra_de_navegacao(atual, chave_inicio=None, onde=None):
-    """Topo padrão das páginas: a fileira de botões da página inicial e, logo abaixo, o botão Início ao lado da faixa
-    "Você está em" (como a linha das abas da página inicial). `chave_inicio`: chave do botão Início (None = a página já tem o dela).
-    `onde`: texto da faixa (None = sem faixa; a página desenha a sua)."""
+def barra_de_navegacao(atual, chave_inicio=None):
+    """Topo padrão das páginas: a fileira de botões da página inicial e, logo abaixo, o botão Início à direita (como na linha das
+    abas da página inicial). `chave_inicio`: chave do botão Início (None = a página já tem o dela)."""
     botoes_das_paginas(atual)
-    if not (chave_inicio or onde):
+    if not chave_inicio:
         return
-    col_onde, col_inicio = st.columns([5, 1], vertical_alignment="center")
-    if onde:
-        col_onde.markdown(f'<div class="escudo-voce-esta">📍 Você está em: <b>{onde}</b></div>', unsafe_allow_html=True)
-    if chave_inicio:
-        with col_inicio:
-            with st.container(key=f"botao_inicio_{atual}"):
-                if st.button("🏠 Início", key=chave_inicio, width="stretch", help="Volta à página inicial (Panorama)."):
-                    _ir_ao_inicio()
+    _, col_inicio = st.columns([5, 1])
+    with col_inicio:
+        with st.container(key=f"botao_inicio_{atual}"):
+            if st.button("🏠 Início", key=chave_inicio, width="stretch", help="Volta à página inicial (Panorama)."):
+                _ir_ao_inicio()

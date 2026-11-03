@@ -682,28 +682,7 @@ r2.button("Sobre as informações", key="nav_apoio_sobre", type="primary" if st.
 
 aba = st.session_state["ap_aba"]
 
-# "Você está em" (auditoria de usabilidade, 20/10/2026): a mulher vê onde está sem decifrar o seletor.
 _boas_vindas_abertas = not st.session_state.get("ap_boas_vindas_fechada")
-if aba == apoio.LAMINAS["caminho"]:
-    _c = st.session_state.get("ap_caminho")
-    if _c == "ajuda" and not _boas_vindas_abertas:
-        _onde = ["Preciso de ajuda"]
-        _e = st.session_state.get("ap_etapa")
-        if _e in apoio.NOME_ETAPA:
-            _onde.append(apoio.NOME_ETAPA[_e])
-    else:
-        _onde = ["Orientação por assunto"]
-        if _boas_vindas_abertas:
-            _onde.append("escolha uma situação abaixo")
-        else:
-            _onde.append(ROTULO.get(_c, ""))
-    _onde = " › ".join(x for x in _onde if x)
-elif aba == apoio.LAMINAS["hospitais"] and st.session_state.get("ap_hosp_modo") == "barretos":
-    _onde = f"{aba} › Barretos: Hospital de Amor"
-else:
-    _onde = aba
-st.markdown(f'<div class="escudo-voce-esta">📍 Você está em: <b>{html.escape(_onde)}</b> · {apoio.CIDADE}</div>',
-            unsafe_allow_html=True)
 
 
 # ---- A Lia: uma só, no centro, entre a navegação e o conteúdo ----

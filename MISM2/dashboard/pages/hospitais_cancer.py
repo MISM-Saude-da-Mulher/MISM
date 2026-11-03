@@ -95,7 +95,7 @@ def centros(versao):
 
 
 def inicio():
-    barra_de_navegacao("hospitais", chave_inicio="hc_inicio", onde="Hospitais habilitados em oncologia")
+    barra_de_navegacao("hospitais", chave_inicio="hc_inicio")
 
 
 def pergunta(texto, escopo):

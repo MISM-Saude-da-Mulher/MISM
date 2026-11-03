@@ -720,8 +720,6 @@ with col_inicio:
 with col_abas:
     with st.container(key="abas_painel"):
         aba = seletor(st, "Navegação", "aba", ABAS, horizontal=True, label_visibility="collapsed")
-st.markdown(f'<div class="escudo-voce-esta">📍 Você está em: <b>{html.escape(_ONDE.get(aba, aba))}</b>'
-            f' · {html.escape(nome_cidade)}</div>', unsafe_allow_html=True)
 
 # ---- A Lia: uma só, no centro, entre a navegação e os dados ----
 def desenhar_lia():
