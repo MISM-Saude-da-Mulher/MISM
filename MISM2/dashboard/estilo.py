@@ -230,5 +230,9 @@ section[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"], [da
     [class*="st-key-lia_balao"] .stButton button p { font-size: 1.02rem; }
     .lia-rosto img { border: 4px solid #ffffff; box-shadow: 0 10px 28px rgba(91, 42, 85, 0.28); }
 }
+/* ---- "Running..." do Streamlit (topo, à direita) vira só "Carregando…", sem o homenzinho nem o nome da função ---- */
+[data-testid="stStatusWidget"] { font-size: 0 !important; }
+[data-testid="stStatusWidget"] * { display: none !important; }
+[data-testid="stStatusWidget"]::after { content: "Carregando…"; font-size: .85rem; color: #5b2a55; font-family: 'DM Sans', sans-serif; }
 </style>
 """

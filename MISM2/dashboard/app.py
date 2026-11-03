@@ -139,22 +139,34 @@ st.markdown(CSS, unsafe_allow_html=True)
 # banco já tinha 6 cânceres e o painel mostrava 1). Quando a data de
 # modificação do arquivo muda, o cache é limpo e os dados são lidos de
 # novo; se o banco não mudou, o cache continua valendo.
+# A versão fica guardada no processo (não na sessão): antes, cada visitante novo limpava o cache de todo mundo e o site refazia as leituras pesadas.
 _versao_banco = os.path.getmtime(BANCO) if os.path.exists(BANCO) else None
-if st.session_state.get("versao_banco") != _versao_banco:
+
+
+@st.cache_resource(show_spinner=False)
+def _versao_vista():
+    return {"v": _versao_banco}
+
+
+_vista = _versao_vista()
+if _vista["v"] != _versao_banco:
     st.cache_data.clear()
-    st.session_state["versao_banco"] = _versao_banco
+    st.cache_resource.clear()
+    _vista = _versao_vista()
+    _vista["v"] = _versao_banco
+st.session_state["versao_banco"] = _versao_banco
 
 
 # ============================================================
 # DADOS (uma consulta só, via inteligencia.py)
 # ============================================================
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def municipios():
     return listar_municipios_disponiveis()
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def serie_municipio(origem):
     conn = sqlite3.connect(BANCO)
     try:
@@ -163,7 +175,7 @@ def serie_municipio(origem):
         conn.close()
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def duplicados_municipio(origem):
     conn = sqlite3.connect(BANCO)
     try:
@@ -172,7 +184,7 @@ def duplicados_municipio(origem):
         conn.close()
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def anos_do_banco():
     try:
         conn = sqlite3.connect(BANCO)
@@ -184,7 +196,7 @@ def anos_do_banco():
         conn.close()
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def internacoes_do_ano(origem, codigo_ibge, ano, perspectiva, cancer):
     try:
         conn = sqlite3.connect(BANCO)
@@ -196,7 +208,7 @@ def internacoes_do_ano(origem, codigo_ibge, ano, perspectiva, cancer):
         conn.close()
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def faixas_municipio(origem):
     conn = sqlite3.connect(BANCO)
     try:
@@ -205,7 +217,7 @@ def faixas_municipio(origem):
         conn.close()
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def porte_cidades():
     conn = sqlite3.connect(BANCO)
     try:
@@ -214,13 +226,13 @@ def porte_cidades():
         conn.close()
 
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=600, show_spinner=False)
 def hospitais_habilitados():
     """Hospitais habilitados em oncologia (lista do Ministério + posição do CNES); vazio se os arquivos não existirem."""
     return hosp_onco.carregar()
 
 
-@st.cache_data
+@st.cache_resource(show_spinner=False)  # tabela grande, só lida: cache_data copiaria tudo a cada clique
 def fluxo_geral():
     conn = sqlite3.connect(BANCO)
     try:
@@ -229,7 +241,7 @@ def fluxo_geral():
         conn.close()
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def fluxo_cidade(origem, codigo_ibge):
     conn = sqlite3.connect(BANCO)
     try:
@@ -238,7 +250,7 @@ def fluxo_cidade(origem, codigo_ibge):
         conn.close()
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def fluxo_cancer_cidade(origem, codigo_ibge):
     conn = sqlite3.connect(BANCO)
     try:
@@ -247,7 +259,7 @@ def fluxo_cancer_cidade(origem, codigo_ibge):
         conn.close()
 
 
-@st.cache_data
+@st.cache_resource(show_spinner=False)  # tabelas grandes, só lidas: cache_data copiaria ~200 MB a cada clique
 def tabelas_ambulatorial_e_sim():
     """(tratamento SIA, óbitos SIM): vazias se o banco ainda não tem as tabelas (py -3.12 etl\\carregar_tudo_pysus.py)."""
     conn = sqlite3.connect(BANCO)
@@ -257,7 +269,7 @@ def tabelas_ambulatorial_e_sim():
         conn.close()
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def localizacao_dos_municipios():
     """Centro de cada município de SP (py -3.12 etl\\baixar_centroides.py); vazio sem a tabela (a Lia então não dá distâncias)."""
     conn = sqlite3.connect(BANCO)
@@ -267,7 +279,7 @@ def localizacao_dos_municipios():
         conn.close()
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def alcance_do_banco():
     """O que o banco guarda (cânceres, período, cidades, outras bases): a Lia responde "quais doenças/cidades você tem?" com isto."""
     conn = sqlite3.connect(BANCO)
@@ -277,7 +289,7 @@ def alcance_do_banco():
         conn.close()
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def polos_de_tratamento():
     """{câncer ou None (os 7 somados): cidades que mais tratam (município do hospital)}. Vazio se o banco não guarda o município do hospital."""
     conn = sqlite3.connect(BANCO)
@@ -295,7 +307,7 @@ def polos_de_tratamento():
         conn.close()
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def rankings_por_100_mil():
     """{câncer ou None (os 7 somados): ranking por 100 mil mulheres}. Vazio se o banco ainda não tem a população do IBGE
     (py etl\\baixar_populacao.py); a Lia então diz o que falta em vez de inventar um ranking."""
@@ -314,7 +326,7 @@ def rankings_por_100_mil():
         conn.close()
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def hospitais_dados():
     conn = sqlite3.connect(BANCO)
     try:
@@ -323,7 +335,7 @@ def hospitais_dados():
         conn.close()
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def radar(origem):
     return radar_futuro(serie_municipio(origem))
 

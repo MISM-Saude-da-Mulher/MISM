@@ -101,7 +101,7 @@ def lista(arquivo, modificado):
     return df
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def internacoes_por_cnes(modificado):
     """CNES (7 dígitos) -> internações por câncer feminino registradas no hospital (2013 até o último mês carregado, 7 cânceres), ou {}
     se o banco não existe ou é antigo (sem CNES). Não é qualidade nem preferência: é só o que o SIH registrou."""

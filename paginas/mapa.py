@@ -43,7 +43,7 @@ def html_do_mapa(por_caso, versao_do_gerador):
     return gerar_mapa.gerar_html(por_caso=por_caso)
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def _areas_e_ubs():
     return consulta_cep.carregar_areas()
 
