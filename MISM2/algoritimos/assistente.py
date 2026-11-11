@@ -796,6 +796,20 @@ def _redigir(resp, pergunta, ia, perfil, ctx=None):
     resp.selo = "🤖 Redigido pela IA (Gemini) a partir de números calculados pelo Escudo."
 
 
+def ia_linguagem_categoria(erro):
+    """Por que o Gemini não respondeu, sem expor chave nem texto da pergunta: autenticação, cota, modelo, tempo ou rede."""
+    t = f"{type(erro).__name__} {erro}".lower()
+    if any(k in t for k in ("401", "403", "unauthenticated", "api key", "permission_denied")):
+        return "autenticacao"
+    if any(k in t for k in ("429", "resource_exhausted", "quota")):
+        return "cota"
+    if any(k in t for k in ("404", "not found", "model")):
+        return "modelo"
+    if any(k in t for k in ("timeout", "timed out", "deadline")):
+        return "tempo"
+    return "rede"
+
+
 def conferir_livre(texto_ia, ficha, pergunta):
     """Como `conferir`, para a resposta livre: número só da ficha; sem link, promessa ou causa. Aqui a IA PODE dizer que o MISM não tem um dado
     (a ficha não lista o que falta), então a checagem de negação não vale."""
@@ -821,10 +835,14 @@ def _resposta_livre(ctx, e, pergunta, perfil, ia, comum):
     if not (ia and ia.livre):
         return None
     try:
-        ficha = ficha_da_cidade(ctx)
+        ficha, omitidos, falhas = ficha_com_diagnostico(ctx)
+        if omitidos or falhas:   # o que não coube ou falhou NÃO é "dado que não existe": a IA é avisada para não afirmar isso
+            ficha += ("\n\nAVISO DO SISTEMA: estes blocos de dados existem, mas não entraram nesta ficha: "
+                      + "; ".join(omitidos + falhas) + ". Se a pergunta depender deles, diga que não consegue consultar essa parte agora; "
+                      "não diga que o MISM não tem o dado.")
         texto = ia.livre(pergunta, ficha, perfil)
     except Exception as erro:
-        ia.erro = type(erro).__name__
+        ia.erro = ia_linguagem_categoria(erro)
         return None
     if not texto or "FORA_DO_ESCOPO" in texto.upper():
         return None
@@ -871,7 +889,8 @@ def montar(ctx, e, pergunta, foco, perfil="TECNICO", ia=None):
         return _finalizar(RespostaIA(
             fala="Não tenho certeza do que você quis saber. Foi alguma destas?", expressao="pensativa", botoes=botoes,
             selo=("Se nenhuma servir, escreva de outro jeito ou use os botões da Lia."
-                  + (" (A IA não respondeu agora; tente de novo em instantes.)" if getattr(ia, "erro", None) else "")), **comum))
+                  + (" (A IA não respondeu agora" + {"autenticacao": ": a chave do Gemini não foi aceita", "cota": ": limite de uso atingido"}.get(
+                      ia.erro, "; tente de novo em instantes") + ".)" if getattr(ia, "erro", None) else "")), **comum))
     if e.tipo == "fora":
         if e.nao_acompanhado:
             disponiveis = _canceres(ctx)

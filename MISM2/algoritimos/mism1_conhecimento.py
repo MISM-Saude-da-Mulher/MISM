@@ -24,29 +24,34 @@ def _ler(caminho, **kw):
 
 
 def carregar():
-    """{"areas": [(área, casos, mulheres, taxa por 10 mil ou None)], "idade": DataFrame|None, "tendencia": DataFrame|None, "anos": (ini, fim),
-    "nao_classificados": n} ou None."""
+    """{"areas": [(área, casos, mulheres, taxa por 10 mil ou None)], "idade": DataFrame|None, "tendencia": DataFrame|None, "anos": (ini, fim)|None,
+    "nao_classificados": n} ou None se nenhuma das três partes existir. Cada parte é lida sozinha: faltar uma (por exemplo o Parquet das áreas
+    ou os denominadores do Censo) não tira as outras da Lia.
+
+    Escopo do Parquet das áreas (conferido em 11/2026): `aih_rio_claro_geo.parquet` tem 913 linhas = TODAS as internações por câncer de
+    mulheres (SEXO = 3) moradoras de Rio Claro (MUNIC_RES 354390) de 2021 a 2025 no `aih_cancer_mulheres.parquet`; o `gerar_mapa` o liga ao AIH
+    só com esse município. Por isso não há filtro de sexo, cidade ou câncer aqui."""
     if "dados" in _cache:
         return _cache["dados"]
-    dados = None
+    dados = {"areas": [], "idade": _ler(PASTA_MISM1 / "estudo_areas_idade_ajustada.csv"),
+             "tendencia": _ler(PASTA_MISM1 / "estudo_tendencia_por_cancer.csv"), "anos": None, "nao_classificados": 0, "total": 0}
     try:
         if GEO.exists():
             geo = pd.read_parquet(GEO, columns=["AREA_USF", "STATUS_AREA_USF", "ANO_INTERNACAO"])
             ok = geo[geo["STATUS_AREA_USF"] == "CLASSIFICADO"]
             casos = ok.groupby("AREA_USF").size()
-            den = _ler(PASTA_MISM1 / "mulheres_por_area_usf.csv")
+            den = _ler(PASTA_MISM1 / "mulheres_por_area_usf.csv")   # sem ele as áreas aparecem só com a contagem
             mulheres = dict(zip(den["area_usf"], den["mulheres"])) if den is not None else {}
-            linhas = []
             for area, n in casos.sort_values(ascending=False).items():
                 m = int(mulheres[area]) if area in mulheres else None
                 taxa = n / m * 10_000 if m and n >= MINIMO_CASOS_TAXA and m >= MINIMO_MULHERES_TAXA else None
-                linhas.append((area, int(n), m, taxa))
+                dados["areas"].append((area, int(n), m, taxa))
             anos = geo["ANO_INTERNACAO"].dropna()
-            dados = {"areas": linhas, "idade": _ler(PASTA_MISM1 / "estudo_areas_idade_ajustada.csv"),
-                     "tendencia": _ler(PASTA_MISM1 / "estudo_tendencia_por_cancer.csv"),
-                     "anos": (int(anos.min()), int(anos.max())) if len(anos) else None,
-                     "nao_classificados": int(len(geo) - len(ok)), "total": int(len(ok))}
+            dados.update(anos=(int(anos.min()), int(anos.max())) if len(anos) else None,
+                         nao_classificados=int(len(geo) - len(ok)), total=int(len(ok)))
     except Exception:
+        dados["areas"] = []
+    if not dados["areas"] and dados["idade"] is None and dados["tendencia"] is None:
         dados = None
     _cache["dados"] = dados
     return dados
@@ -71,14 +76,15 @@ def blocos_da_ficha(cidade="Rio Claro"):
     """Blocos para a ficha do Gemini: o que o mapa é e os números por área. [] se os arquivos não existem."""
     d = carregar()
     blocos = ["[O QUE É O MAPA DE RIO CLARO (MISM1)]\n" + DEFINICAO]
-    if not d or not d["areas"]:
+    if not d:
         return blocos
-    periodo = f"{d['anos'][0]} a {d['anos'][1]}, " if d["anos"] else ""
-    tabela = "; ".join(f"{a}: {_n(n)} internações" + (f", {_n(m)} mulheres" if m else "") + (f", {_n(t, 1)} por 10 mil mulheres" if t else "")
-                       for a, n, m, t in d["areas"])
-    blocos.append(f"[INTERNAÇÕES POR ÁREA DE USF, RIO CLARO ({periodo}SIH/SUS; mulheres = Censo 2022 do IBGE; a taxa por 10 mil só aparece para "
-                  f"área com 20 casos ou mais e 1.000 mulheres ou mais; é taxa bruta de internações, não incidência; {_n(d['nao_classificados'])} internações "
-                  f"não puderam ser ligadas a uma área e ficam fora)]\n{tabela}")
+    if d["areas"]:
+        periodo = f"{d['anos'][0]} a {d['anos'][1]}, " if d["anos"] else ""
+        tabela = "; ".join(f"{a}: {_n(n)} internações" + (f", {_n(m)} mulheres" if m else "") + (f", {_n(t, 1)} por 10 mil mulheres" if t else "")
+                           for a, n, m, t in d["areas"])
+        blocos.append(f"[INTERNAÇÕES POR ÁREA DE USF, RIO CLARO ({periodo}SIH/SUS; mulheres = Censo 2022 do IBGE; a taxa por 10 mil só aparece para "
+                      f"área com 20 casos ou mais e 1.000 mulheres ou mais; é taxa bruta de internações, não incidência; {_n(d['nao_classificados'])} internações "
+                      f"não puderam ser ligadas a uma área e ficam fora)]\n{tabela}")
     ida = d["idade"]
     if ida is not None and len(ida):
         acima = ida[ida["prob_acima"] >= 0.95].sort_values("razao", ascending=False)

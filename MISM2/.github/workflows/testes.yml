@@ -25,6 +25,9 @@ jobs:
       - name: Alcance do banco (a Lia sabe o que tem)
         working-directory: algoritimos
         run: python teste_alcance.py
+      - name: Resposta livre da Lia e conhecimento do MISM1
+        working-directory: algoritimos
+        run: python teste_resposta_livre.py
       - name: Glossário da Lia (termos técnicos)
         working-directory: algoritimos
         run: python teste_glossario.py
