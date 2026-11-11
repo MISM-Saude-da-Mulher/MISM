@@ -74,7 +74,8 @@ class IA:
     classificar: object = None    # (pergunta, opções) -> {"intencao", "cancer"}
     livre: object = None          # (pergunta, ficha, perfil) -> texto: pergunta aberta dentro de saúde da mulher + dados do projeto
     ligada: bool = False
-    chamadas: int = 0             # chamadas REAIS ao Gemini feitas por esta IA (o limite por sessão conta estas, não as respostas)
+    erro: str = None              # último erro do Gemini nesta sessão (ex.: ClientError 401 = chave inválida), para o selo dizer por que a IA não respondeu
+    chamadas: int = 0            # chamadas REAIS ao Gemini feitas por esta IA (o limite por sessão conta estas, não as respostas)
 
 
 def _contando(ia, funcao):
@@ -822,7 +823,8 @@ def _resposta_livre(ctx, e, pergunta, perfil, ia, comum):
     try:
         ficha = ficha_da_cidade(ctx)
         texto = ia.livre(pergunta, ficha, perfil)
-    except Exception:
+    except Exception as erro:
+        ia.erro = type(erro).__name__
         return None
     if not texto or "FORA_DO_ESCOPO" in texto.upper():
         return None
@@ -868,7 +870,8 @@ def montar(ctx, e, pergunta, foco, perfil="TECNICO", ia=None):
         botoes = [(ent.ROTULOS[i], acao(i, e.cancer, pergunta, e.ano)) for i, _ in e.palpites]
         return _finalizar(RespostaIA(
             fala="Não tenho certeza do que você quis saber. Foi alguma destas?", expressao="pensativa", botoes=botoes,
-            selo="Se nenhuma servir, escreva de outro jeito ou use os botões da Lia.", **comum))
+            selo=("Se nenhuma servir, escreva de outro jeito ou use os botões da Lia."
+                  + (" (A IA não respondeu agora; tente de novo em instantes.)" if getattr(ia, "erro", None) else "")), **comum))
     if e.tipo == "fora":
         if e.nao_acompanhado:
             disponiveis = _canceres(ctx)

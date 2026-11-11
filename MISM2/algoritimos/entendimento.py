@@ -542,6 +542,8 @@ def _seguimento(pergunta, memoria, codigos, ano):
     continua o assunto anterior."""
     if not memoria or not memoria.get("intencao"):
         return False
+    if memoria["intencao"] not in COM_NUMEROS:   # só resposta de DADOS tem "e em 2027?"; depois de texto fixo (apoio, MISM...), "posso fazer mamografia com 35 anos?" é pergunta nova
+        return False
     return len(fichas(pergunta)) <= 4 and (len(codigos) == 1 or ano is not None)
 
 
