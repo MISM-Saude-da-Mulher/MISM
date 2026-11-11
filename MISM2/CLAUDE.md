@@ -677,3 +677,5 @@ Fluxo: pergunta -> `entendimento.py` (qual assunto, qual câncer) -> `assistente
   reais) e I (o `.env` tem GEMINI_API_KEY) do teste são do ambiente, não do código.
 - `pysus` só funciona no Python 3.12 do autor (`py -3.12`); o `py`
   padrão dele é 3.14.
+
+- **Resposta livre e MISM1 na Lia (11/2026, pedido do autor).** A caixa "Pergunte à Lia" ganhou `ia_linguagem.responder_livre` + `assistente._resposta_livre`: pergunta que as regras não encaixam (palpites/fora) vai ao Gemini, só sobre saúde da mulher e os dados do projeto (`FORA_DO_ESCOPO` = recusa de sempre), com conferência própria (`conferir_livre`: número só da ficha, sem link/causa/"vai ficar"). Sem chave ou depois do limite, o comportamento antigo. **MISM1 na Lia:** `algoritimos/mism1_conhecimento.py` lê só agregados (áreas de USF, mulheres do Censo, estudo de Rio Claro) e entra na ficha do Gemini; `mapa_rio_claro` passou a ser assunto de dados (`SO_DADOS`) e o gatilho do mapa pega "idade ajustada", "por 10 mil mulheres", nomes de áreas etc. Nunca CEP, rua ou coordenada.

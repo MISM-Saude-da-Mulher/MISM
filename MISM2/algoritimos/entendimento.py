@@ -594,7 +594,8 @@ PEDE_SOBRE_MISM = re.compile(r"\b(funcao|funcoes|serve|servir|para que|pra que|o
 
 
 # Mapa de Rio Claro (projeto do grupo, página própria do MISM): perguntas sobre o mapa ou sobre as áreas de USF levam a ele.
-GATILHO_MAPA = re.compile(r"\b(mapa|mapas|usf|usfs|areas? de (usf|saude)|mapa de rio claro)\b")
+GATILHO_MAPA = re.compile(r"\b(mapa|mapas|usf|usfs|areas? de (usf|saude)|mapa de rio claro|mism ?1|estudo de rio claro|idade ajustada|ajustad[oa]s? pela idade|"
+                          r"por 10 mil mulheres|bairros? de rio claro|bairros? com mais|areas? (com|que) mais|jardim novo|grande cervezao|bela vista|cidade nova)\b")
 EXCLUI_MAPA = re.compile(r"\b(hospitais?|unacon|cacon|habilitad\w+|onde (ser|ficar) atendida|postos?|ubs)\b")
 
 

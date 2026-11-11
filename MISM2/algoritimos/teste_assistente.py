@@ -253,7 +253,7 @@ def main():
     checar("7b. sem resposta anterior, 'me explica isso melhor' não inventa: oferece palpites ou pergunta",
            r.tipo in ("palpites", "fora") and r.origem != "explicar")
     textos = list(asst.EXPLICACAO_SIMPLES.values()) + [asst.COMO_LER]
-    checar("7b. todas as explicações simples cobrem os 13 assuntos de dados, sem número, sem 'vai ficar' e sem atribuir causa",
+    checar("7b. todas as explicações simples cobrem os 14 assuntos de dados, sem número, sem 'vai ficar' e sem atribuir causa",
            set(asst.EXPLICACAO_SIMPLES) == asst.SO_DADOS and not any(any(c.isdigit() for c in t) for t in textos)
            and not any(asst.PROMETE.search(t) or asst.CAUSA_ATRIBUIDA.search(t) for t in textos))
     for pergunta_c, par in (("está aumentando e o que posso esperar para frente?", ("evolucao", "futuro")),

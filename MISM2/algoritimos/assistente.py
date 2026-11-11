@@ -4,6 +4,7 @@ from dataclasses import dataclass, field, replace
 
 import entendimento as ent
 import glossario
+import mism1_conhecimento
 import localizacao
 from inteligencia import (
     MODELOS_PREVISAO,
@@ -71,6 +72,7 @@ class RespostaIA(Resposta):
 class IA:
     explicar: object = None       # (pergunta, base, perfil) -> texto
     classificar: object = None    # (pergunta, opções) -> {"intencao", "cancer"}
+    livre: object = None          # (pergunta, ficha, perfil) -> texto: pergunta aberta dentro de saúde da mulher + dados do projeto
     ligada: bool = False
     chamadas: int = 0             # chamadas REAIS ao Gemini feitas por esta IA (o limite por sessão conta estas, não as respostas)
 
@@ -92,6 +94,7 @@ def obter_ia():
         ia = IA(ligada=True)
         ia.explicar = _contando(ia, ia_linguagem.redigir_resposta)
         ia.classificar = _contando(ia, ia_linguagem.classificar_pergunta)
+        ia.livre = _contando(ia, ia_linguagem.responder_livre)
         return ia
     except Exception:
         return IA()
@@ -271,6 +274,9 @@ EXPLICACAO_SIMPLES = {
                   "dos meses que existem e avisa onde a estimativa é menos firme.",
     "metodo": "Os dados vêm do SIH/SUS, o sistema que registra as internações pagas pelo SUS. Cada registro é uma internação, não um "
               "caso novo de câncer. O Escudo calcula os números, e a IA, quando está ligada, só ajuda na redação.",
+    "mapa_rio_claro": "O mapa divide Rio Claro em áreas, cada uma ligada a um posto de saúde da família (USF), e conta quantas internações de mulheres "
+                      "por câncer vieram de cada área. Área com mais mulheres tende a ter mais internações; por isso o estudo compara também pelo "
+                      "tamanho e pela idade das mulheres de cada área.",
 }
 COMO_LER = ("Para ler os números: cada um conta **internações** registradas no SUS (uma mulher pode ter mais de uma), não casos novos "
             "de câncer. O Escudo mostra o que aconteceu, não explica o porquê.")
@@ -496,7 +502,7 @@ def _fato_do_ano(ctx, c, ano):
 POR_CANCER = {"idade"}                      # sem câncer citado, usam o câncer em foco no painel
 USAM_CANCER_SE_CITADO = {"evolucao", "obitos", "valores", "tempo", "estado", "futuro", "idade", "tratamento", "mortalidade_real", "polos"}
 SO_DADOS = {"mais_aparece", "evolucao", "futuro", "obitos", "valores", "tempo", "idade", "estado", "atencao",
-            "fora_padrao", "fluxo", "completude", "metodo"}   # as únicas que a IA pode reescrever
+            "fora_padrao", "fluxo", "completude", "metodo", "mapa_rio_claro"}   # as únicas que a IA pode reescrever
 
 
 def _resposta_base(ctx, intencao, cancer, foco, ano, ia):
@@ -528,11 +534,7 @@ def _resposta_base(ctx, intencao, cancer, foco, ano, ia):
     if intencao == "sobre_mism":
         return lia_sobre_mism(ctx), None, nota
     if intencao == "mapa_rio_claro":
-        return Resposta(
-            fala=("O **Mapa de Rio Claro** mostra as internações por câncer em mulheres (SIH/SUS, base pública do DATASUS) **por área de USF**, "
-                  "com filtros de câncer, ano e idade. Por padrão ele traz totais por área; há também a visão de casos detalhados. "
-                  "O ponto de cada área é o **centro dela**, não o endereço de alguém, e grupos com menos de 5 casos são somados. "
-                  "Internação não é caso novo nem incidência."), expressao="explicando"), None, nota
+        return Resposta(fala=mism1_conhecimento.resumo_fixo(), expressao="explicando"), None, nota
     if intencao == "tratamento":
         return lia_tratamento(ctx, c), c, nota
     if intencao == "mortalidade_real":
@@ -674,7 +676,7 @@ def _finalizar(resp):
     return resp
 
 
-LIMITE_FICHA = 7000
+LIMITE_FICHA = 12000   # cabe também o bloco do Mapa de Rio Claro (MISM1)
 NOTA_MINIMA_FICHA = 0.25   # abaixo disso a pergunta é obscura demais: melhor perguntar do que responder pela ficha
 
 
@@ -731,6 +733,10 @@ def _blocos_da_ficha(ctx):
             pôr("O QUE O BANCO GUARDA", leitura_alcance(ctx.alcance, cidade)[:3])
         except Exception as erro:
             falhas.append("alcance do banco: " + type(erro).__name__)
+    try:   # o Mapa de Rio Claro (MISM1): o que é, as áreas de USF e o Estudo de Rio Claro (só agregados)
+        blocos.extend(mism1_conhecimento.blocos_da_ficha(cidade))
+    except Exception as erro:
+        falhas.append("mapa de Rio Claro (MISM1): " + type(erro).__name__)
     return blocos, falhas
 
 
@@ -789,6 +795,46 @@ def _redigir(resp, pergunta, ia, perfil, ctx=None):
     resp.selo = "🤖 Redigido pela IA (Gemini) a partir de números calculados pelo Escudo."
 
 
+def conferir_livre(texto_ia, ficha, pergunta):
+    """Como `conferir`, para a resposta livre: número só da ficha; sem link, promessa ou causa. Aqui a IA PODE dizer que o MISM não tem um dado
+    (a ficha não lista o que falta), então a checagem de negação não vale."""
+    if not texto_ia or not texto_ia.strip():
+        return "a IA devolveu texto vazio"
+    if len(texto_ia) > 1500:
+        return "a IA escreveu demais"
+    if re.search(r"https?://|www\.|\]\(", texto_ia):
+        return "a IA incluiu um link"
+    novos = numeros_novos(texto_ia, ficha, pergunta, "190 192 180 188")
+    if novos:
+        return "a IA citou número que não está na ficha: " + ", ".join(novos[:3])
+    if PROMETE.search(texto_ia):
+        return "a IA prometeu um resultado ('vai ficar')"
+    if CAUSA_ATRIBUIDA.search(texto_ia):
+        return "a IA atribuiu causa"
+    return None
+
+
+def _resposta_livre(ctx, e, pergunta, perfil, ia, comum):
+    """Pergunta que as regras não souberam encaixar: com o Gemini ligado, ele responde dentro de saúde da mulher e dos dados do projeto.
+    None quando a IA está desligada, falha, a pergunta é de fora do assunto ou o texto não passa na conferência (aí valem os palpites/recusa)."""
+    if not (ia and ia.livre):
+        return None
+    try:
+        ficha = ficha_da_cidade(ctx)
+        texto = ia.livre(pergunta, ficha, perfil)
+    except Exception:
+        return None
+    if not texto or "FORA_DO_ESCOPO" in texto.upper():
+        return None
+    if conferir_livre(texto, ficha, pergunta):
+        return None
+    botoes = [(ent.ROTULOS[i], acao(i, e.cancer, pergunta, e.ano)) for i, _ in (e.palpites or [])[:3] if i in ent.ROTULOS]
+    return _finalizar(RespostaIA(
+        fala=texto.strip(), expressao="explicando", botoes=botoes, usou_ia=True,
+        selo="🤖 Resposta livre da IA (Gemini), só sobre saúde da mulher e os dados do MISM. Não é diagnóstico nem orientação médica.",
+        **{**comum, "tipo": "livre", "origem": "livre"}))
+
+
 def montar(ctx, e, pergunta, foco, perfil="TECNICO", ia=None):
     """Resposta para um Entendimento já feito."""
     ia = ia or IA()
@@ -814,6 +860,10 @@ def montar(ctx, e, pergunta, foco, perfil="TECNICO", ia=None):
             if tentativa.usou_ia:
                 tentativa.botoes = tentativa.botoes + [(ent.ROTULOS[i], acao(i, e.cancer, pergunta, e.ano)) for i, _ in e.palpites[1:3]]
                 return _finalizar(tentativa)
+    if e.tipo in ("palpites", "fora"):
+        livre = _resposta_livre(ctx, e, pergunta, perfil, ia, comum)
+        if livre is not None:
+            return livre
     if e.tipo == "palpites":
         botoes = [(ent.ROTULOS[i], acao(i, e.cancer, pergunta, e.ano)) for i, _ in e.palpites]
         return _finalizar(RespostaIA(
