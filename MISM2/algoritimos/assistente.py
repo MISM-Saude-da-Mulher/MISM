@@ -677,7 +677,7 @@ def _finalizar(resp):
     return resp
 
 
-LIMITE_FICHA = 12000   # cabe também o bloco do Mapa de Rio Claro (MISM1)
+LIMITE_FICHA = 15000   # cabe também o bloco do método da previsão e o do Mapa de Rio Claro (MISM1)
 NOTA_MINIMA_FICHA = 0.25   # abaixo disso a pergunta é obscura demais: melhor perguntar do que responder pela ficha
 
 
@@ -734,11 +734,38 @@ def _blocos_da_ficha(ctx):
             pôr("O QUE O BANCO GUARDA", leitura_alcance(ctx.alcance, cidade)[:3])
         except Exception as erro:
             falhas.append("alcance do banco: " + type(erro).__name__)
+    try:   # como a previsão validada funciona e o que ela achou em cada câncer (perguntas sobre modelo, retroteste, erro, fragilidade)
+        blocos.append(_bloco_previsao(ctx))
+    except Exception as erro:
+        falhas.append("método da previsão: " + type(erro).__name__)
     try:   # o Mapa de Rio Claro (MISM1): o que é, as áreas de USF e o Estudo de Rio Claro (só agregados)
         blocos.extend(mism1_conhecimento.blocos_da_ficha(cidade))
     except Exception as erro:
         falhas.append("mapa de Rio Claro (MISM1): " + type(erro).__name__)
     return blocos, falhas
+
+
+def _bloco_previsao(ctx):
+    """Texto do MÉTODO da previsão (constantes de inteligencia.py) + o resultado de cada câncer. Nada escrito à mão além do método."""
+    from inteligencia import (ANOS_MINIMOS_PREVISAO, ANOS_MINIMOS_TREINO, GANHO_MINIMO_SOBRE_INGENUO, MEDIA_PEQUENA, previsao_todos)
+    modelos = "; ".join(f"{d}" for d in MODELOS_PREVISAO.values())
+    metodo = (f"A previsão do MISM2 é uma PROJEÇÃO DE TENDÊNCIA de internações (não casos novos, não incidência, não indica causa). O MISM compara {len(MODELOS_PREVISAO)} "
+              f"modelos pequenos: {modelos}. Cada um é testado num retroteste (walk-forward): treina até um ano, prevê os 3 anos seguintes, anda um ano e repete, "
+              f"medindo o erro (MAE, RMSE e viés) em anos que já são conhecidos. Vale o de menor erro; se os erros empatam por até 2%, vence o mais simples. "
+              f"A faixa de incerteza (cerca de 90%) vem do erro medido nesses testes, nunca encolhe com o horizonte e nunca fica abaixo de zero (previsão negativa de "
+              f"internações é impedida). O modelo é sempre comparado com o método ingênuo (repetir o último ano): só \"ganha\" se errar pelo menos {GANHO_MINIMO_SOBRE_INGENUO:.0f}% menos; "
+              f"senão a previsão é tratada como frágil. Também é frágil quando a média é menor que {MEDIA_PEQUENA:.0f} internações por ano. São precisos pelo menos {ANOS_MINIMOS_TREINO} "
+              f"anos para treinar e {ANOS_MINIMOS_PREVISAO} no total (para haver ao menos 2 testes); com menos, o MISM não prevê. A tendência de Poisson do Estudo de Rio Claro (MISM1) é outro "
+              f"cálculo: mede a variação percentual ao ano, com intervalo de confiança, nos meses disponíveis de cada ano; a previsão validada projeta o futuro. "
+              f"A evolução histórica mostra o que já aconteceu; a previsão é a tendência que aponta se o passado continuar.")
+    itens = []
+    for p in previsao_todos(ctx.serie):
+        itens.append(f"{p['doenca']}: modelo escolhido {p['descricao']}, erro médio (MAE) {formatar_numero(p['mae'], 1)} internações por ano, RMSE do melhor modelo "
+                     f"{formatar_numero(float(p['tabela'][p['tabela']['modelo'] == p['modelo']]['rmse'].iloc[0]), 1)}, {p['testes']} previsões testadas, "
+                     f"{'ganha' if p['supera_ingenuo'] else 'não ganha'} do ingênuo (diferença de erro {formatar_numero(p['ganho_pct'], 1)}%), "
+                     f"{'previsão frágil' if p['fragil'] else 'previsão não frágil'}")
+    resultado = ("\n\nRESULTADO POR CÂNCER (" + getattr(ctx, "cidade", "a cidade") + "):\n" + "\n".join(itens)) if itens else ""
+    return "[COMO FUNCIONA A PREVISÃO VALIDADA (MISM2)]\n" + metodo + resultado
 
 
 def ficha_com_diagnostico(ctx, limite=LIMITE_FICHA):
