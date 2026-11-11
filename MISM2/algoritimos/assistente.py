@@ -796,6 +796,10 @@ def _redigir(resp, pergunta, ia, perfil, ctx=None):
     resp.selo = "🤖 Redigido pela IA (Gemini) a partir de números calculados pelo Escudo."
 
 
+PEDE_SERVICO = re.compile(r"\b(onde|endereco|telefone|ligar|perto|proximo|unidade|ubs|usf|posto|hospital|agendar|agendamento|marcar|cadu|carreta|"
+                          r"direito|direitos|beneficio|encaminhamento|regulacao|cross|fila|vaga|gratis|gratuito|sus)\b")
+
+
 def ia_linguagem_categoria(erro):
     """Por que o Gemini não respondeu, sem expor chave nem texto da pergunta: autenticação, cota, modelo, tempo ou rede."""
     t = f"{type(erro).__name__} {erro}".lower()
@@ -933,6 +937,13 @@ def montar(ctx, e, pergunta, foco, perfil="TECNICO", ia=None):
         intencao = "evolucao"  # "quantas internações de mama em 2020?" é sobre aquele câncer e aquele ano
     if intencao == "obitos" and _pede_total_de_mortes(ctx, pergunta):
         intencao = "mortalidade_real"   # o total de mortes é o SIM; o texto já traz, ao lado, o que o SIH registrou na internação
+    if intencao == "apoio" and e.origem != "escolha" and ia and ia.livre and not PEDE_SERVICO.search(ent.normalizar(pergunta)):
+        # pergunta de INFORMAÇÃO ("com que frequência faço o preventivo?", "o que é HPV?") que a busca mandou para o texto genérico do Apoio:
+        # com o Gemini ligado, ele responde dentro do escopo e o Apoio fica como link; quem procura SERVIÇO (onde, telefone, agendar) segue no texto fixo
+        livre = _resposta_livre(ctx, e, pergunta, perfil, ia, comum)
+        if livre is not None:
+            livre.links = [LINK_APOIO, LINK_ONDE]
+            return livre
     base, usado, nota = _resposta_base(ctx, intencao, pedido, foco, e.ano, ia)
     if intencao == "onde_atendida":
         hospital = _hospital_de_cancer(ctx, pergunta)
